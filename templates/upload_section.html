@@ -1,0 +1,88 @@
+
+<body class="bg-light">
+  <div class="container mt-4">
+    <h2 class="mb-4">Upload Invoice</h2>
+    <div class="row">
+      <!-- LEFT: Upload & Preview -->
+      <div class="col-md-5" style="position: relative;">
+        <form id="uploadForm">
+          <div class="mb-3">
+            <label for="invoiceFile" class="form-label">Choose Invoice File</label>
+            <input type="file" class="form-control" id="invoiceFile" name="file" accept=".pdf,.png,.jpg,.jpeg" required>
+          </div>
+          <div class="mb-3">
+            <label for="modeSelect" class="form-label">File Type</label>
+            <select class="form-select" id="modeSelect" name="mode" required>
+              <option value="text">Text PDF</option>
+              <option value="ocr">Scanned Image</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary">Upload & Extract</button>
+        </form>
+
+        <!-- Preview Section (responsive and large) -->
+        <div id="previewWrapper" style="width:100%;height:70vh;min-height:400px;max-height:90vh;overflow:hidden;position:relative;border:1px solid #ccc;">
+          <img id="previewImg" style="display:none;position:absolute;left:0;top:0;cursor:grab;max-width:none;max-height:none;" />
+          <canvas id="pdfViewer" style="display:none;position:absolute;left:0;top:0;cursor:grab;"></canvas>
+        </div>
+
+        <!-- spinner -->
+        <div id="uploadSpinner" class="spinner-border text-primary" role="status" style="display:none;">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div> <!-- closes the left column -->
+
+      <!-- RIGHT: Extracted Invoice -->
+      <div class="col-md-7 position-relative" id="extractedSection" style="display:none;">
+        <!-- Spinner overlay for this section -->
+        <div id="datatableSpinnerOverlay" style="display:none;position:absolute;top:0;left:0;width:100%;height:100%;z-index:1000;background:rgba(255,255,255,0.5);">
+          <div class="d-flex justify-content-center align-items-center" style="height:100%;">
+            <div class="spinner-border text-primary" style="width:3rem;height:3rem;" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+        </div>
+        <!-- The rest of your DataTable and controls -->
+        <h5 class="mb-3 text-primary">Extracted Invoice</h5>
+        <table class="table table-bordered" id="recentInvoiceTable">
+          <thead class="table-primary text-white">
+            <tr>
+              <th>Invoice No</th>
+              <th>From</th>
+              <th>To</th>
+              <th>GST No</th>
+              <th>Date</th>
+              <th>Total</th>
+              <th>Taxes</th>
+              <th>Qty</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <button id="saveBtn" class="btn btn-success">🔄 Update Invoice</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+<div class="toast-container position-fixed top-0 end-0 p-3">
+  <div id="toast" class="toast text-bg-success border-0 shadow" role="alert">
+    <div class="d-flex">
+      <div class="toast-body">Status Message</div>
+      <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+  <!-- External Scripts -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+  <!-- Custom Script -->
+  <script src="/static/js/upload.js"></script>
+</body>
+<!-- End of upload_section.html -->
