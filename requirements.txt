@@ -14,3 +14,8 @@ pydantic==2.11.7
 python-dotenv==1.1.1
 PyYAML==6.0.2
 SQLAlchemy==2.0.41
+uvicorn
+pyodbc==5.2.0
+paddlepaddle
+python-multipart
+jinja2
