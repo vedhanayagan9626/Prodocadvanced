@@ -1,6 +1,9 @@
+# This file is used to configure the Render service for the Invoice Parser API.
 services:
   - type: web
-    name: Invoice-Parser-api
+    name: Invoice-Parser-API
     env: python
-    buildCommand: ""
-    startCommand: ./start.sh
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "./start.sh"
+    branch: main
+    autoDeploy: true
