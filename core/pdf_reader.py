@@ -25,5 +25,3 @@ def extract_text(path):
 def convert_pdf_to_images(path):
     return None if not convert_from_path(path) else convert_from_path(path)
 
-
-

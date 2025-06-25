@@ -1,8 +1,13 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
+from dotenv import load_dotenv
+import os
 
-DATABASE_URL = "mssql+pyodbc://InvoiceAPI:InvoiceAPI%40API%40123%21@103.133.214.232:1436/InvoiceAPIDB?driver=ODBC+Driver+17+for+SQL+Server"
+load_dotenv()
 
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL is None:
+	raise ValueError("DATABASE_URL environment variable is not set")
 engine = create_engine(DATABASE_URL, echo=True, fast_executemany=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 Base = declarative_base()
