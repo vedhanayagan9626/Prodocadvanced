@@ -1,3 +1,5 @@
+setuptools>=65
+wheel
 fastapi==0.115.13
 numpy==1.24.4
 opencv_contrib_python==4.6.0.66
