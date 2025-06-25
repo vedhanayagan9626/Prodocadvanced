@@ -1,10 +1,7 @@
-setuptools>=65
-wheel
 fastapi==0.115.13
 numpy==1.24.4
 opencv_contrib_python==4.6.0.66
 opencv_python==4.11.0.86
-opencv_python_headless==4.6.0.66
 paddleocr==2.8.1
 pandas==1.5.3
 pdf2image==1.16.3

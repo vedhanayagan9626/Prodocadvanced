@@ -1,2 +1,30 @@
-invoice.env
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.so
+*.pyd
+
+# Virtual environments
+env/
+venv/
+.venv/
+
+# Environment variables
 .env
+
+# System files
+.DS_Store
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# User uploads (optional)
+uploads/
+
+# Package metadata
+*.egg-info/
+dist/
+build/
+
+# VSCode settings (optional)
+.vscode/
