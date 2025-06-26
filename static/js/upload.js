@@ -384,6 +384,34 @@ attachPanZoom(previewImg, false);
 attachPanZoom(pdfViewer, true);
 
 // --- File Input Handler ---
+// $('#invoiceFile').on('change', function () {
+//   const file = this.files[0];
+//   $('#previewImg').hide();
+//   $('#pdfViewer').hide();
+
+//   if (file) {
+//     const type = file.type;
+//     if (type === "application/pdf") {
+//       const fileReader = new FileReader();
+//       fileReader.onload = function () {
+//         const typedArray = new Uint8Array(this.result);
+//         pdfjsLib.getDocument(typedArray).promise.then(pdf => {
+//           pdfDoc = pdf;
+//           currentPage = 1;
+//           pdfScale = 1.5;
+//           showPDFPreview();
+//         });
+//       };
+//       fileReader.readAsArrayBuffer(file);
+//     } else if (type.startsWith("image/")) {
+//       const reader = new FileReader();
+//       reader.onload = function (e) {
+//         showImagePreview(e.target.result);
+//       };
+//       reader.readAsDataURL(file);
+//     }
+//   }
+// });
 $('#invoiceFile').on('change', function () {
   const file = this.files[0];
   $('#previewImg').hide();
@@ -399,7 +427,7 @@ $('#invoiceFile').on('change', function () {
           pdfDoc = pdf;
           currentPage = 1;
           pdfScale = 1.5;
-          showPDFPreview();
+          showPDFPreview(); // <- uses cancel-safe render
         });
       };
       fileReader.readAsArrayBuffer(file);
