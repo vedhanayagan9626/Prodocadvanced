@@ -89,6 +89,8 @@ uvicorn main:app --host 0.0.0.0 --port 10000
                     # Add more mappings here
                 }
 ```
+
+---
 - Update the routing or parsing logic in `api/v1/routes.py` or the relevant handler to use your new parser.
 
 ### **Database**
