@@ -24,15 +24,15 @@ A **FastAPI**-based application for extracting and parsing invoice data using OC
 ### ✅ 1. Clone the Repository
 ```bash
 git clone https://github.com/vedhanayagan9626/INVOICE-PARSER-APP.git
-cd INVOICE-PARSER-APP
+cd INVOICE-PARSER-APP```
 🐍 2. Set Up Python Environment
-bash
+``` bash
 Copy
 Edit
 python -m venv invoice-env
 invoice-env\Scripts\activate   # On Windows
 # or
-source invoice-env/bin/activate  # On Linux/Mac
+source invoice-env/bin/activate  # On Linux/Mac ```
 📦 3. Install Dependencies
 bash
 Copy
