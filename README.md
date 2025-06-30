@@ -67,7 +67,7 @@ uvicorn main:app --host 0.0.0.0 --port 10000
 ### **Extending Vendor Parser Logic**
 - To add or extend vendor-specific invoice parsing, add your logic in the `vendor_parsers/` directory.
 - You can add seperate logic for OCR in `vendor_parsers/ocr/` and PDF plumber in `vendor_parsers/plumber/` based on a custom template .
-- Generate a basic .yml for template with `vendor name` and 'keywords` to recognize and choose a vendor parser based on detected keywords.
+- Generate a basic .yml for template with `vendor name` and `keywords` to recognize and choose a vendor parser based on detected keywords.
   eg.  `vendor: Satrun Technologies
         keywords: ["SATRUN TECHNOLOGIES", "satruntechnologies@hotmail.com"] `
 - Each vendor can have its own parser module.
