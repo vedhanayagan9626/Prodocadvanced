@@ -73,7 +73,7 @@ uvicorn main:app --host 0.0.0.0 --port 10000
 - Each vendor can have its own parser module.
   Once Created a parsers place them in a appropiate folder as mentioned above. Add there `vendor name`: `parser name` (without extention)
   in a `def load_vendor_parser(vendor_name, mode)` function.
-            ```sh
+  ```sh
             if mode == 'plumber':
                 vendor_map = {
                     "Surekha Gold Private Limited": "surekha_goldpdf",
@@ -88,8 +88,7 @@ uvicorn main:app --host 0.0.0.0 --port 10000
                     "Silver & C.Z International": "silver_czocr"
                     # Add more mappings here
                 }
-           ```
-  
+```
 - Update the routing or parsing logic in `api/v1/routes.py` or the relevant handler to use your new parser.
 
 ### **Database**
