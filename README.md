@@ -71,7 +71,7 @@ uvicorn main:app --host 0.0.0.0 --port 10000
   eg.  `vendor: Satrun Technologies
         keywords: ["SATRUN TECHNOLOGIES", "satruntechnologies@hotmail.com"] `
 - Each vendor can have its own parser module.
-  Once Created a parsers and placed them in a appropiate folder as mentioned above add there `vendor name`: `parser name` (without extention)
+  Once Created a parsers place them in a appropiate folder as mentioned above. Add there `vendor name`: `parser name` (without extention)
   in a `def load_vendor_parser(vendor_name, mode)` function.
             if mode == 'plumber':
                 vendor_map = {
