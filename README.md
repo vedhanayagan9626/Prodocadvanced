@@ -1,118 +1,154 @@
-# Invoice Extractor API
+# 📄 Invoice Extractor API
 
-A FastAPI-based application for extracting and parsing invoice data using OCR and vendor-specific logic using PDF Plumber.
+![Build](https://img.shields.io/badge/build-passing-brightgreen)
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Stars](https://img.shields.io/github/stars/vedhanayagan9626/INVOICE-PARSER-APP?style=social)
 
----
-
-## Features
-
-- Extracts invoice data from uploaded files using OCR (PaddleOCR) or PDFPlumber based on input file type(scannedimage - ocr, text PDF - plumber)
-- Vendor-specific parsing logic (extensible)
-- REST API endpoints for uploading, listing, and viewing invoices
-- Templated HTML frontend using Jinja2
+A **FastAPI**-based application for extracting and parsing invoice data using OCR (PaddleOCR) and vendor-specific logic (PDFPlumber).
 
 ---
 
-## Getting Started
+## ✨ Features
 
-### 1. **Clone the Repository**
-```sh
+- 🧾 Extracts invoice data from uploaded files:
+  - Scanned images → **OCR (PaddleOCR)**
+  - Text PDFs → **PDFPlumber**
+- 🏷️ Vendor-specific, easily extensible parsing logic
+- ⚙️ REST API endpoints for uploading, listing, and viewing invoices
+- 🎨 Templated HTML frontend using **Jinja2**
+
+---
+
+## 🚀 Getting Started
+
+### ✅ 1. Clone the Repository
+```bash
 git clone https://github.com/vedhanayagan9626/INVOICE-PARSER-APP.git
 cd INVOICE-PARSER-APP
-```
-
-### 2. **Set Up Python Environment**
-```sh
+🐍 2. Set Up Python Environment
+bash
+Copy
+Edit
 python -m venv invoice-env
 invoice-env\Scripts\activate   # On Windows
-# Or
+# or
 source invoice-env/bin/activate  # On Linux/Mac
-```
-
-### 3. **Install Dependencies**
-```sh
+📦 3. Install Dependencies
+bash
+Copy
+Edit
 pip install -r requirements.txt
-```
+🔑 4. Configure Environment Variables
+Create a .env file in the project root:
 
-### 4. **Configure Environment Variables**
-- Copy `.env` to your project root (if not present).
-- Set your `DATABASE_URL` in `.env`.
-- Add `SECRET_KEY` in `.env`.
-- Likewise add important keys in '.env' if you where extending this project .
-  
-### 5. **Add Template and Static Files**
-- Place your HTML templates in the `templates/` directory.
-- Place static files (CSS, JS, images) in the `static/` directory.
+env
+Copy
+Edit
+DATABASE_URL=your_database_url
+SECRET_KEY=your_secure_generated_secret_key
+Add other keys as needed if you extend the project.
 
-### 6. **Run the Application**
-```sh
-# If you have start.sh
+🖼️ 5. Add Templates & Static Files
+Place HTML templates in templates/ (e.g., index.html, invoicelist.html)
+
+Place CSS, JS, and images in static/
+
+▶️ 6. Run the Application
+bash
+Copy
+Edit
+# If you have a start script
 ./start.sh
 
-# Or directly
+# Or directly with uvicorn
 uvicorn main:app --host 0.0.0.0 --port 10000
-```
+🛠 Developer Notes
+📂 Templates
+All Jinja2 HTML templates → templates/ directory.
 
----
+📂 Static Files
+Static assets → static/ directory.
 
-## Developer Notes
+🧩 Extending Vendor Parser Logic
+Add vendor parsers in vendor_parsers/:
 
-### **Templates**
-- All Jinja2 HTML templates should be placed in the `templates/` directory.
-- Example: `templates/index.html`, `templates/invoicelist.html`, etc.
+OCR logic → vendor_parsers/ocr/
 
-### **Static Files**
-- Place static assets in the `static/` directory.
+PDFPlumber logic → vendor_parsers/plumber/
 
-### **Extending Vendor Parser Logic**
-- To add or extend vendor-specific invoice parsing, add your logic in the `vendor_parsers/` directory.
-- You can add seperate logic for OCR in `vendor_parsers/ocr/` and PDF plumber in `vendor_parsers/plumber/` based on a custom template .
-- Generate a basic .yml for template with `vendor name` and `keywords` to recognize and choose a vendor parser based on detected keywords.
-  eg.  `vendor: Satrun Technologies
-        keywords: ["SATRUN TECHNOLOGIES", "satruntechnologies@hotmail.com"] `
-- Each vendor can have its own parser module.
-  Once Created a parsers place them in a appropiate folder as mentioned above. Add there `vendor name`: `parser name` (without extention)
-  in a `def load_vendor_parser(vendor_name, mode)` function.
-  ```sh
-            if mode == 'plumber':
-                vendor_map = {
-                    "Surekha Gold Private Limited": "surekha_goldpdf",
-                    "Satrun Technologies": "satruntech_pdf",
-                    "Nucleus Analytics Private Limited": "Nucleus_pdf"
-                    # Add more mappings here
-                }
-            elif mode == 'ocr':
-                vendor_map = {
-                    "Surekha Gold Private Limited": "surekha_goldocr",
-                    "Satrun Technologies": "satruntech_ocr",
-                    "Silver & C.Z International": "silver_czocr"
-                    # Add more mappings here
-                }
-```
-- Update the routing or parsing logic in `api/v1/routes.py` or the relevant handler to use your new parser.
+Create a YAML file to map vendor name & keywords:
 
----
-### **Database**
-- Connection settings are managed via the `DATABASE_URL` in `.env`.
-- SQLAlchemy models are in `models/`.
-- Database session management is in `core/database.py`.
-- If you want you can modify a extracting output based on your requirement and store them in your db.
----
+yaml
+Copy
+Edit
+vendor: Satrun Technologies
+keywords: ["SATRUN TECHNOLOGIES", "satruntechnologies@hotmail.com"]
+Map your parser in load_vendor_parser(vendor_name, mode):
 
-## Contributing
+python
+Copy
+Edit
+if mode == 'plumber':
+    vendor_map = {
+        "Surekha Gold Private Limited": "surekha_goldpdf",
+        "Satrun Technologies": "satruntech_pdf",
+        "Nucleus Analytics Private Limited": "Nucleus_pdf"
+    }
+elif mode == 'ocr':
+    vendor_map = {
+        "Surekha Gold Private Limited": "surekha_goldocr",
+        "Satrun Technologies": "satruntech_ocr",
+        "Silver & C.Z International": "silver_czocr"
+    }
+Update routing or parsing logic in api/v1/routes.py.
 
-1. Fork the repo
-2. Create your feature branch (`git checkout -b feature/YourFeature`)
-3. Commit your changes
-4. Push to the branch (`git push origin feature/YourFeature`)
-5. Open a pull request
+🗄️ Database
+Connection settings → DATABASE_URL in .env
 
----
+Models → models/ directory
 
-## License
+DB session & engine → core/database.py
 
-MIT License
+Customize how extracted data is stored as needed.
 
----
+🤝 Contributing Guide
+We welcome contributions!
 
-**For any questions or issues, please open an issue on GitHub.**
+📌 Steps:
+Fork this repository.
+
+Clone your fork:
+
+bash
+Copy
+Edit
+git clone https://github.com/yourusername/INVOICE-PARSER-APP.git
+Create a new branch:
+
+bash
+Copy
+Edit
+git checkout -b feature/YourFeatureName
+Make your changes and commit:
+
+bash
+Copy
+Edit
+git commit -m "Add YourFeatureName"
+Push to your fork:
+
+bash
+Copy
+Edit
+git push origin feature/YourFeatureName
+Open a Pull Request on GitHub.
+
+✅ Please follow clean code practices and keep commits clear and descriptive.
+
+📄 License
+This project is licensed under the MIT License.
+
+❓ Need help?
+Open an issue on GitHub
+
+Made with ❤️ by Vedhanayagan
