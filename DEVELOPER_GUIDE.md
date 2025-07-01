@@ -1,64 +1,43 @@
-🧾 Invoice Extractor API – Program Flow & Developer Guide
+# 🧾 Invoice Extractor API – Developer Flow & Extension Guide
 
-This document explains the main program execution flow, key functions, and how developers can extend or plug in new vendor logic.
-
----
-
-🗺️ Program Execution Flow
-
-<svg width="900" height="600" viewBox="0 0 900 600" xmlns="http://www.w3.org/2000/svg">
-  <rect x="40" y="30" width="220" height="50" rx="10" fill="#e3f2fd" stroke="#1976d2" stroke-width="2"/>
-  <text x="60" y="60" font-size="18" fill="#1976d2">⬆️ Client Uploads Invoice</text>
-  
-  <rect x="300" y="30" width="220" height="50" rx="10" fill="#fffde7" stroke="#fbc02d" stroke-width="2"/>
-  <text x="320" y="60" font-size="18" fill="#fbc02d">POST /upload-invoice</text>
-  
-  <rect x="560" y="30" width="220" height="50" rx="10" fill="#e8f5e9" stroke="#388e3c" stroke-width="2"/>
-  <text x="580" y="60" font-size="18" fill="#388e3c">mode: "ocr" or "text"</text>
-  
-  <rect x="300" y="120" width="220" height="50" rx="10" fill="#f3e5f5" stroke="#8e24aa" stroke-width="2"/>
-  <text x="320" y="150" font-size="16" fill="#8e24aa">process_with_pdfplumber</text>
-  
-  <rect x="560" y="120" width="220" height="50" rx="10" fill="#f3e5f5" stroke="#8e24aa" stroke-width="2"/>
-  <text x="580" y="150" font-size="16" fill="#8e24aa">process_with_ocr</text>
-  
-  <rect x="430" y="210" width="220" height="50" rx="10" fill="#e1f5fe" stroke="#0288d1" stroke-width="2"/>
-  <text x="450" y="240" font-size="16" fill="#0288d1">Detect Vendor Template</text>
-  
-  <rect x="430" y="290" width="220" height="50" rx="10" fill="#fff3e0" stroke="#f57c00" stroke-width="2"/>
-  <text x="450" y="320" font-size="16" fill="#f57c00">load_vendor_parser</text>
-  
-  <rect x="430" y="370" width="220" height="50" rx="10" fill="#fce4ec" stroke="#d81b60" stroke-width="2"/>
-  <text x="450" y="400" font-size="16" fill="#d81b60">Vendor Parser: process_invoice</text>
-  
-  <rect x="430" y="450" width="220" height="50" rx="10" fill="#e8f5e9" stroke="#388e3c" stroke-width="2"/>
-  <text x="450" y="480" font-size="16" fill="#388e3c">Insert Invoice & Items (DB)</text>
-  
-  <rect x="430" y="530" width="220" height="50" rx="10" fill="#fffde7" stroke="#fbc02d" stroke-width="2"/>
-  <text x="450" y="560" font-size="16" fill="#fbc02d">Return API Response</text>
-  
-  <!-- Arrows -->
-  <line x1="260" y1="55" x2="300" y2="55" stroke="#1976d2" stroke-width="2" marker-end="url(#arrow)"/>
-  <line x1="520" y1="55" x2="560" y2="55" stroke="#fbc02d" stroke-width="2" marker-end="url(#arrow)"/>
-  <line x1="670" y1="80" x2="670" y2="120" stroke="#388e3c" stroke-width="2" marker-end="url(#arrow)"/>
-  <line x1="410" y1="80" x2="410" y2="120" stroke="#8e24aa" stroke-width="2" marker-end="url(#arrow)"/>
-  <line x1="410" y1="145" x2="430" y2="235" stroke="#8e24aa" stroke-width="2" marker-end="url(#arrow)"/>
-  <line x1="670" y1="170" x2="670" y2="235" stroke="#8e24aa" stroke-width="2" marker-end="url(#arrow)"/>
-  <line x1="540" y1="235" x2="540" y2="290" stroke="#0288d1" stroke-width="2" marker-end="url(#arrow)"/>
-  <line x1="540" y1="340" x2="540" y2="370" stroke="#f57c00" stroke-width="2" marker-end="url(#arrow)"/>
-  <line x1="540" y1="420" x2="540" y2="450" stroke="#d81b60" stroke-width="2" marker-end="url(#arrow)"/>
-  <line x1="540" y1="500" x2="540" y2="530" stroke="#388e3c" stroke-width="2" marker-end="url(#arrow)"/>
-  
-  <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L10,5 L0,10 L2,5 z" fill="#333"/>
-    </marker>
-  </defs>
-</svg>
+This guide explains the main program execution flow, key functions, and how to extend the system with new vendor logic.
 
 ---
 
-🔍 Key Functions & Extension Points
+## 🚦 Program Execution Flow
+
+1. **⬆️ Client Uploads Invoice**
+    - Endpoint: `POST /upload-invoice`
+    - Accepts: PDF or image file, and a `mode` (`ocr` or `text`)
+
+2. **🔀 Mode Selection**
+    - If `mode == "text"`:  
+      → Calls `process_with_pdfplumber()`
+    - If `mode == "ocr"`:  
+      → Calls `process_with_ocr()`
+
+3. **🧠 Text Extraction**
+    - `process_with_pdfplumber`: Extracts text from text-based PDFs.
+    - `process_with_ocr`: Extracts text from scanned PDFs/images using OCR.
+
+4. **🔎 Vendor Template Detection**
+    - Calls `template_loader.detect_template()` to match extracted text to a vendor YAML template.
+
+5. **🧩 Vendor Parser Loading**
+    - Calls `load_vendor_parser(vendor, mode)` to dynamically import the correct parser module from `vendor_parsers/`.
+
+6. **📦 Invoice Processing**
+    - Calls `vendor_module.process_invoice()` to parse the invoice and extract structured data.
+
+7. **💾 Database Operations**
+    - Uses `invoice_crud.insert_invoice_orm()` and `insert_items_orm()` to save invoice and items to the database.
+
+8. **📤 API Response**
+    - Returns the parsed invoice and items as a JSON response.
+
+---
+
+## 🛠️ Key Functions & Extension Points
 
 | Function/Module                | Purpose                                                                 | Where to Extend / Add Plugins                |
 |------------------------------- |------------------------------------------------------------------------|----------------------------------------------|
@@ -73,7 +52,7 @@ This document explains the main program execution flow, key functions, and how d
 
 ---
 
-🧩 How to Add Your Own Vendor Parser
+## 🧩 How to Add Your Own Vendor Parser
 
 1. **Create a YAML template** for your vendor in the templates directory.
 2. **Write a parser module** in `vendor_parsers/ocr/` or `vendor_parsers/plumber/` (e.g., `myvendor_ocr.py` or `myvendor_pdf.py`).
@@ -89,20 +68,20 @@ This document explains the main program execution flow, key functions, and how d
 
 ---
 
-🏗️ Other Important Endpoints
+## 📚 Other Important Endpoints
 
-- `/invoices` – List all invoices
-- `/invoices/{invoice_no}` – Get a specific invoice
-- `/invoices/{invoice_no}/items` – Get items for an invoice
-- `/invoices/update-invoice` – Update invoice data
-- `/invoices/update-items` – Update items
-- `/invoices/{invoice_no}` (DELETE) – Delete an invoice
-- `/invoices/{invoice_no}/history` – Get invoice history
-- `/invoices/history` – Get all invoice history
+- `GET /invoices` – List all invoices
+- `GET /invoices/{invoice_no}` – Get a specific invoice
+- `GET /invoices/{invoice_no}/items` – Get items for an invoice
+- `POST /invoices/update-invoice` – Update invoice data
+- `POST /invoices/update-items` – Update items
+- `DELETE /invoices/{invoice_no}` – Delete an invoice
+- `GET /invoices/{invoice_no}/history` – Get invoice history
+- `GET /invoices/history` – Get all invoice history
 
 ---
 
-🛠️ Developer Notes
+## 📝 Developer Notes
 
 - **Templates:** Place Jinja2 HTML templates in the `templates/` directory.
 - **Static Files:** Place static assets in the `static/` directory.
@@ -111,4 +90,6 @@ This document explains the main program execution flow, key functions, and how d
 ---
 
 **Tip:**  
-Add your new vendor logic in the correct folder, update the mapping, and provide a YAML template for seamless
+Add your new vendor logic in the correct folder, update the mapping, and provide a YAML template for seamless integration!
+
+---
