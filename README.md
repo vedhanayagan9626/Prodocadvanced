@@ -18,7 +18,7 @@ A FastAPI-based application for extracting and parsing invoice data using OCR an
 
 ---
 
-##🚀 Getting Started
+###🚀 Getting Started
 
 1. **Clone the Repository**
 ```sh
@@ -49,7 +49,7 @@ pip install -r requirements.txt
 - 🗂️ Place your HTML templates in the `templates/` directory.
 - 🖼️ Place static files (CSS, JS, images) in the `static/` directory.
 
-### 6. **Run the Application**
+6. **Run the Application**
 ```sh
 # If you have start.sh
 ./start.sh
@@ -60,7 +60,7 @@ uvicorn main:app --host 0.0.0.0 --port 10000
 
 ---
 
-##**🛠️ Developer Notes**
+###**🛠️ Developer Notes**
 
 📁 Templates
 - All Jinja2 HTML templates should be placed in the `templates/` directory.
