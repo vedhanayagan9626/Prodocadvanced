@@ -6,20 +6,55 @@ This document explains the main program execution flow, key functions, and how d
 
 🗺️ Program Execution Flow
 
-```mermaid
-flowchart TD
-    A[Client Uploads Invoice] --> B[POST /upload-invoice]
-    B --> C{mode: "ocr" or "text"}
-    C -- "text" --> D[process_with_pdfplumber]
-    C -- "ocr" --> E[process_with_ocr]
-    D & E --> F[Detect Vendor Template]
-    F --> G[load_vendor_parser]
-    G --> H[Vendor Parser: process_invoice]
-    H --> I[Extracted Data Returned]
-    I --> J[Insert Invoice & Items (invoice_crud)]
-    J --> K[Save to Database]
-    K --> L[Return API Response]
-```
+<svg width="900" height="600" viewBox="0 0 900 600" xmlns="http://www.w3.org/2000/svg">
+  <rect x="40" y="30" width="220" height="50" rx="10" fill="#e3f2fd" stroke="#1976d2" stroke-width="2"/>
+  <text x="60" y="60" font-size="18" fill="#1976d2">⬆️ Client Uploads Invoice</text>
+  
+  <rect x="300" y="30" width="220" height="50" rx="10" fill="#fffde7" stroke="#fbc02d" stroke-width="2"/>
+  <text x="320" y="60" font-size="18" fill="#fbc02d">POST /upload-invoice</text>
+  
+  <rect x="560" y="30" width="220" height="50" rx="10" fill="#e8f5e9" stroke="#388e3c" stroke-width="2"/>
+  <text x="580" y="60" font-size="18" fill="#388e3c">mode: "ocr" or "text"</text>
+  
+  <rect x="300" y="120" width="220" height="50" rx="10" fill="#f3e5f5" stroke="#8e24aa" stroke-width="2"/>
+  <text x="320" y="150" font-size="16" fill="#8e24aa">process_with_pdfplumber</text>
+  
+  <rect x="560" y="120" width="220" height="50" rx="10" fill="#f3e5f5" stroke="#8e24aa" stroke-width="2"/>
+  <text x="580" y="150" font-size="16" fill="#8e24aa">process_with_ocr</text>
+  
+  <rect x="430" y="210" width="220" height="50" rx="10" fill="#e1f5fe" stroke="#0288d1" stroke-width="2"/>
+  <text x="450" y="240" font-size="16" fill="#0288d1">Detect Vendor Template</text>
+  
+  <rect x="430" y="290" width="220" height="50" rx="10" fill="#fff3e0" stroke="#f57c00" stroke-width="2"/>
+  <text x="450" y="320" font-size="16" fill="#f57c00">load_vendor_parser</text>
+  
+  <rect x="430" y="370" width="220" height="50" rx="10" fill="#fce4ec" stroke="#d81b60" stroke-width="2"/>
+  <text x="450" y="400" font-size="16" fill="#d81b60">Vendor Parser: process_invoice</text>
+  
+  <rect x="430" y="450" width="220" height="50" rx="10" fill="#e8f5e9" stroke="#388e3c" stroke-width="2"/>
+  <text x="450" y="480" font-size="16" fill="#388e3c">Insert Invoice & Items (DB)</text>
+  
+  <rect x="430" y="530" width="220" height="50" rx="10" fill="#fffde7" stroke="#fbc02d" stroke-width="2"/>
+  <text x="450" y="560" font-size="16" fill="#fbc02d">Return API Response</text>
+  
+  <!-- Arrows -->
+  <line x1="260" y1="55" x2="300" y2="55" stroke="#1976d2" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="520" y1="55" x2="560" y2="55" stroke="#fbc02d" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="670" y1="80" x2="670" y2="120" stroke="#388e3c" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="410" y1="80" x2="410" y2="120" stroke="#8e24aa" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="410" y1="145" x2="430" y2="235" stroke="#8e24aa" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="670" y1="170" x2="670" y2="235" stroke="#8e24aa" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="540" y1="235" x2="540" y2="290" stroke="#0288d1" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="540" y1="340" x2="540" y2="370" stroke="#f57c00" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="540" y1="420" x2="540" y2="450" stroke="#d81b60" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="540" y1="500" x2="540" y2="530" stroke="#388e3c" stroke-width="2" marker-end="url(#arrow)"/>
+  
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 L2,5 z" fill="#333"/>
+    </marker>
+  </defs>
+</svg>
 
 ---
 
