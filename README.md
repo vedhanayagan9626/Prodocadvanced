@@ -1,4 +1,4 @@
-#🧾 Invoice Extractor API
+🧾 Invoice Extractor API
 
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115.13-green.svg)](https://fastapi.tiangolo.com/)
@@ -9,7 +9,7 @@ A FastAPI-based application for extracting and parsing invoice data using OCR an
 
 ---
 
-✨ Features
+## ✨ Features
 
 - 🖼️ Extracts invoice data from uploaded files using OCR (PaddleOCR) or PDFPlumber based on input file type (scanned image → OCR, text PDF → plumber)
 - 🏷️ Vendor-specific parsing logic (extensible)
