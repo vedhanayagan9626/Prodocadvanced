@@ -60,7 +60,7 @@ uvicorn main:app --host 0.0.0.0 --port 10000
 
 ---
 
-🛠️ Developer Notes
+**🛠️ Developer Notes**
 
 📁 Templates
 - All Jinja2 HTML templates should be placed in the `templates/` directory.
@@ -69,7 +69,7 @@ uvicorn main:app --host 0.0.0.0 --port 10000
 🗂️ Static Files
 - Place static assets in the `static/` directory.
 
-🧩 Extending Vendor Parser Logic
+**🧩 Extending Vendor Parser Logic**
 - STEP 1
          - Each vendor can have its own parser module so create a new parser for new template on your own logic if needed.
          - Create your own parser.pyfile using REGEX, positional mappings, table extractor like pdfplumber, camelot or any other table parsers based on a custom template.
