@@ -18,7 +18,7 @@ A FastAPI-based application for extracting and parsing invoice data using OCR an
 
 ---
 
-🚀 Getting Started
+##🚀 Getting Started
 
 1. **Clone the Repository**
 ```sh
@@ -60,7 +60,7 @@ uvicorn main:app --host 0.0.0.0 --port 10000
 
 ---
 
-**🛠️ Developer Notes**
+##**🛠️ Developer Notes**
 
 📁 Templates
 - All Jinja2 HTML templates should be placed in the `templates/` directory.
@@ -69,7 +69,7 @@ uvicorn main:app --host 0.0.0.0 --port 10000
 🗂️ Static Files
 - Place static assets in the `static/` directory.
 
-**🧩 Extending Vendor Parser Logic**
+##**🧩 Extending Vendor Parser Logic**
 - STEP 1
          - Each vendor can have its own parser module so create a new parser for new template on your own logic if needed.
          - Create your own parser.pyfile using REGEX, positional mappings, table extractor like pdfplumber, camelot or any other table parsers based on a custom template.
@@ -103,7 +103,7 @@ uvicorn main:app --host 0.0.0.0 --port 10000
 
 ---
 
-🗄️ Database
+##🗄️ Database
 - Connection settings are managed via the `DATABASE_URL` in `.env`.
 - SQLAlchemy models are in `models/`.
 - Database session management is in `core/database.py`.
@@ -111,7 +111,7 @@ uvicorn main:app --host 0.0.0.0 --port 10000
 NOTES: This app using MSSQL server(which Db creation file is not added you can create a db on your own by refering models/models.py) , i have created my db and its tables manually and mapped them in a models/ , you can also create a db migrations to make changes in tables.
 ---
 
-🤝 Contributing
+##🤝 Contributing
 
 1. 🍴 Fork the repo
 2. 🛠️ Create your feature branch (`git checkout -b feature/YourFeature`)
