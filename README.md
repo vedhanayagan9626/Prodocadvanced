@@ -1,4 +1,4 @@
-##🧾 Invoice Extractor API
+#🧾 Invoice Extractor API
 
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115.13-green.svg)](https://fastapi.tiangolo.com/)
