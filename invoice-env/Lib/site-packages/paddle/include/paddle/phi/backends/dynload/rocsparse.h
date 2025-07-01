@@ -21,7 +21,7 @@
 #include <type_traits>
 
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
-#include "paddle/phi/common/port.h"
+#include "paddle/phi/backends/dynload/port.h"
 
 namespace phi {
 namespace dynload {

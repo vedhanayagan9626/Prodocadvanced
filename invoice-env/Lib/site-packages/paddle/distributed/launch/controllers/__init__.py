@@ -14,9 +14,10 @@
 
 __all__ = []
 
-from .collective import CollectiveController, CollectiveElasticController
-from .ipu_controller import IPUController
+from .collective import CollectiveController
+from .collective import CollectiveElasticController
 from .ps import PSController
+from .ipu_controller import IPUController
 from .rpc import RpcController
 
 # the order is extremely important

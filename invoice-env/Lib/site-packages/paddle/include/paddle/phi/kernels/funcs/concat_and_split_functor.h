@@ -40,8 +40,7 @@ namespace funcs {
  *               [5,6]]
  */
 template <typename Context, typename T>
-class ConcatFunctor {
- public:
+struct ConcatFunctor {
   void operator()(const Context& context,
                   const std::vector<phi::DenseTensor>& input,
                   int axis,
@@ -73,18 +72,16 @@ class SplitFunctor {
 }  // namespace funcs
 }  // namespace phi
 
-#define FOR_ALL_TYPES(macro)          \
-  macro(int);                         \
-  macro(float);                       \
-  macro(double);                      \
-  macro(bool);                        \
-  macro(int64_t);                     \
-  macro(int16_t);                     \
-  macro(uint8_t);                     \
-  macro(int8_t);                      \
-  macro(phi::dtype::float16);         \
-  macro(phi::dtype::bfloat16);        \
-  macro(phi::dtype::complex<float>);  \
-  macro(phi::dtype::complex<double>); \
-  macro(phi::dtype::float8_e4m3fn);   \
-  macro(phi::dtype::float8_e5m2);
+#define FOR_ALL_TYPES(macro)         \
+  macro(int);                        \
+  macro(float);                      \
+  macro(double);                     \
+  macro(bool);                       \
+  macro(int64_t);                    \
+  macro(int16_t);                    \
+  macro(uint8_t);                    \
+  macro(int8_t);                     \
+  macro(phi::dtype::float16);        \
+  macro(phi::dtype::bfloat16);       \
+  macro(phi::dtype::complex<float>); \
+  macro(phi::dtype::complex<double>);

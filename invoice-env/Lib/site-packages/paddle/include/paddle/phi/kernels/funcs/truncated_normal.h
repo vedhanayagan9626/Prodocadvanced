@@ -130,20 +130,19 @@ T Erfinv(T x) {
 
 template <typename T>
 struct TruncatedNormal {
-  T mean, std, a, b;
+  T mean, std;
   T a_normal_cdf;
   T b_normal_cdf;
-  TruncatedNormal(T mean, T std, T a, T b) : mean(mean), std(std), a(a), b(b) {
+  TruncatedNormal(T mean, T std) : mean(mean), std(std) {
     auto normal_cdf = [](T x) {
       return (1.0 + std::erf(x / std::sqrt(2.0))) / 2.0;
     };
-    a_normal_cdf = normal_cdf((a - mean) / std);
-    b_normal_cdf = normal_cdf((b - mean) / std);
+    a_normal_cdf = normal_cdf(-2.0);
+    b_normal_cdf = normal_cdf(2.0);
   }
 
   T operator()(T value) const {
     auto p = a_normal_cdf + (b_normal_cdf - a_normal_cdf) * value;
-    T ret = std::sqrt(2.0) * Erfinv(2 * p - 1) * std + mean;
-    return std::clamp(ret, a, b);
+    return std::sqrt(2.0) * Erfinv(2 * p - 1) * std + mean;
   }
 };

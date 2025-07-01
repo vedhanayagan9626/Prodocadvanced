@@ -31,9 +31,9 @@ def split_heter_worker_ops_pass(program, config, stage_id, device):
     2. find input&output of every heter-block
     3. create heter worker program, add listen&serv op
     """
-    default_device = "cpu"
+    default_deveice = "cpu"
     program, heter_ops, _, program_block_ops = find_heter_ops(
-        program, default_device
+        program, default_deveice
     )
     if len(heter_ops) == 0:
         warnings.warn(

@@ -15,14 +15,13 @@ limitations under the License. */
 
 #include <utility>
 
+#include "paddle/phi/core/distributed/auto_parallel/auto_parallel.pb.h"
 #include "paddle/phi/core/distributed/auto_parallel/device_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 
 namespace phi {
 namespace distributed {
 namespace auto_parallel {
-
-class DistributedMapperProto;
 
 class DistributedMapper {
  public:
@@ -53,7 +52,7 @@ class DistributedMapper {
   std::string to_string() const;
 
   static DistributedMapper from_proto(const DistributedMapperProto& proto);
-  void to_proto(DistributedMapperProto* proto) const;
+  DistributedMapperProto to_proto() const;
 
  private:
   std::map<std::string, DeviceMesh> device_meshes_;

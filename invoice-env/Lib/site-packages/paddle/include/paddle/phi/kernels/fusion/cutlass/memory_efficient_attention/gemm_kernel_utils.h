@@ -20,6 +20,7 @@
 #pragma once
 
 #include "cutlass/arch/mma.h"
+#include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/core/enforce.h"
 
 ////////////////////////////////////////////////////////////////////////////////

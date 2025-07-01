@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .manipulation import _npu_identity  # noqa: F401
-from .math import (  # noqa: F401
-    segment_max,
-    segment_mean,
-    segment_min,
-    segment_sum,
-)
+from .math import segment_sum
+from .math import segment_mean
+from .math import segment_max
+from .math import segment_min
+from .manipulation import _npu_identity
 
 __all__ = []

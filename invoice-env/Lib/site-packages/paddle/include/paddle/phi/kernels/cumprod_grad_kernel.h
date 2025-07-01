@@ -24,7 +24,5 @@ void CumprodGradKernel(const Context& dev_ctx,
                        const DenseTensor& out,
                        const DenseTensor& dout,
                        int dim,
-                       bool exclusive,
-                       bool reverse,
                        DenseTensor* dx);
 }  // namespace phi

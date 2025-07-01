@@ -22,6 +22,7 @@
 namespace phi {
 namespace funcs {
 namespace sparse {
+
 template <typename DeviceContext>
 class SparseBlas {
  public:
@@ -53,15 +54,6 @@ class SparseBlas {
              T beta,
              TensorType* mat_out) const;
 
-  template <typename T>
-  void SPGEMM(bool transa,
-              bool transb,
-              T alpha,
-              const SparseCsrTensor& mat_a,
-              const SparseCsrTensor& mat_b,
-              T beta,
-              SparseCsrTensor* mat_out) const;
-
  private:
   const DeviceContext& dev_ctx_;
 };
@@ -84,11 +76,6 @@ class SparseBlasT : private SparseBlas<DeviceContext> {
   template <typename... ARGS>
   void SDDMM(ARGS... args) const {
     Base()->template SDDMM<T>(args...);
-  }
-
-  template <typename... ARGS>
-  void SPGEMM(ARGS... args) const {
-    Base()->template SPGEMM<T>(args...);
   }
 
  private:

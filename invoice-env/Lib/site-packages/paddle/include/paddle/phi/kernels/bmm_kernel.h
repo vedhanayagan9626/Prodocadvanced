@@ -22,7 +22,7 @@ namespace phi {
  * @brief Bmm Kernel.
  *        Applies batched matrix multiplication to two tensors.
  *
- *        Both of the two input tensors must be three-dimensional
+ *        Both of the two input tensors must be three-dementional
  *        and share the same batch size.
  *        if x is a (b, m, k) tensor, y is a (b, k, n) tensor,
  *        the output will be a (b, m, n) tensor.

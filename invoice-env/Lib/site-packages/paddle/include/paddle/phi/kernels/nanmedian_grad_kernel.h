@@ -26,6 +26,5 @@ void NanmedianGradKernel(const Context& dev_ctx,
                          const DenseTensor& out_grad,
                          const IntArray& axes,
                          bool keep_dim,
-                         const std::string& mode,
                          DenseTensor* x_grad);
 }  // namespace phi

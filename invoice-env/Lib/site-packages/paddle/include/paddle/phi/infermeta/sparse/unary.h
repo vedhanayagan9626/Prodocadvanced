@@ -24,10 +24,5 @@ void IndicesInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void ValuesInferMeta(const MetaTensor& x, MetaTensor* out);
 
-void CastInferMeta(const MetaTensor& x,
-                   DataType index_dtype,
-                   DataType out_dtype,
-                   MetaTensor* out);
-
 }  // namespace sparse
 }  // namespace phi
