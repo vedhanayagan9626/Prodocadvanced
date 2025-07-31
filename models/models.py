@@ -1,8 +1,10 @@
+from __future__ import annotations
 from typing import List, Optional
-
-from sqlalchemy import DECIMAL, Date, DateTime, ForeignKeyConstraint, Identity, Integer, PrimaryKeyConstraint, String, Unicode, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.sql import func
+from sqlalchemy import DECIMAL, Date, DateTime, ForeignKeyConstraint, Identity, Integer, PrimaryKeyConstraint, String, Unicode, text, ForeignKey, UnicodeText
 import datetime
+
 import decimal
 
 class Base(DeclarativeBase):
@@ -135,3 +137,41 @@ class ItemsHistory(Base):
     SGST: Mapped[Optional[str]] = mapped_column(Unicode(50))
     Amount: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(18, 2))
     ChangedAt: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime, server_default=text("GETDATE()"))
+
+
+class CorrectedInvoices(Base):
+    __tablename__ = 'CorrectedInvoices'
+    
+    CorrectionID: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    OriginalInvoiceNo: Mapped[str] = mapped_column(String(50), ForeignKey('Invoices.InvoiceNo'))
+    FromAddress: Mapped[Optional[str]] = mapped_column(UnicodeText)
+    ToAddress: Mapped[Optional[str]] = mapped_column(UnicodeText)
+    SupplierGST: Mapped[Optional[str]] = mapped_column(String(50))
+    CustomerGST: Mapped[Optional[str]] = mapped_column(String(50))
+    InvoiceDate: Mapped[Optional[str]] = mapped_column(String(50))
+    Total: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(18, 2))
+    Subtotal: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(18, 2))
+    TaxAmount: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(18, 2))
+    Taxes: Mapped[Optional[str]] = mapped_column(UnicodeText)
+    TotalQuantity: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(18, 2))
+    CorrectionDate: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
+    CorrectedBy: Mapped[Optional[str]] = mapped_column(String(100))
+    Status: Mapped[str] = mapped_column(String(20), default='PENDING_APPROVAL')
+    Notes: Mapped[Optional[str]] = mapped_column(UnicodeText)
+    
+    Items: Mapped[List['CorrectedItems']] = relationship('CorrectedItems', back_populates='Correction')
+
+class CorrectedItems(Base):
+    __tablename__ = 'CorrectedItems'
+    
+    CorrectionItemID: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    CorrectionID: Mapped[int] = mapped_column(Integer, ForeignKey('CorrectedInvoices.CorrectionID'))
+    OriginalItemID: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('Items.ItemID'))
+    Description: Mapped[Optional[str]] = mapped_column(UnicodeText)
+    Quantity: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(18, 2))
+    Rate: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(18, 2))
+    Tax: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(5, 2))
+    Amount: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(18, 2))
+    HSN: Mapped[Optional[str]] = mapped_column(String(50))
+    
+    Correction: Mapped['CorrectedInvoices'] = relationship('CorrectedInvoices', back_populates='Items') 

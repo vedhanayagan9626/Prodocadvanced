@@ -1,0 +1,1173 @@
+{% extends 'layout.html' %}
+{% block body %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Invoice Editor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            width: 300px;
+            background: #f5f5f5;
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid #ddd;
+        }
+
+        .sidebar-section {
+            margin-bottom: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .sidebar-section h3 {
+            margin-top: 0;
+            font-size: 16px;
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="number"],
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .form-group textarea {
+            height: 60px;
+            resize: vertical;
+        }
+
+        .form-check {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .form-check input {
+            margin-right: 10px;
+        }
+
+        /* Invoice Preview Styles */
+        .invoice-preview {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f9f9f9;
+            display: flex;
+            justify-content: center;
+        }
+
+        .invoice-container {
+            width: 8.27in;
+            height: 11.69in; /* A4 height by default */
+            margin: 0 auto;
+            padding: 0.7in 0.55in 0.7in 0.4in; /* Default margins */
+            box-sizing: border-box;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .invoice-paper {
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            position: relative;
+            min-height: 11.69in; /* Default A4 height */
+            width: 8.27in; /* Default A4 width */
+            margin: 0 auto;
+            padding: 0.7in 0.55in 0.7in 0.4in; /* Default margins */
+            box-sizing: border-box;
+        }
+
+        /* Landscape orientation style */
+        .invoice-container.landscape {
+            width: 11.69in;
+            height: 8.27in;
+        }
+
+        /* Paper Size Classes */
+        .invoice-paper.a4 {
+            width: 8.27in;
+        }
+        
+        .invoice-paper.a5 {
+            width: 5.83in;
+        }
+        
+        .invoice-paper.letter {
+            width: 8.5in;
+        }
+        
+/* Landscape Orientation */
+        .invoice-paper.landscape {
+            width: 11.69in;
+        }
+        
+        .invoice-paper.a5.landscape {
+            width: 8.27in;
+        }
+        
+        .invoice-paper.letter.landscape {
+            width: 11in;
+        }
+
+        /* Responsive Content */
+        .invoice-content {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Make tables responsive */
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            table-layout: fixed;
+        }
+
+        .items-table th, 
+        .items-table td {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        /* Adjust column widths for different sizes */
+        .invoice-paper.a5 .items-table th:nth-child(2),
+        .invoice-paper.a5 .items-table td:nth-child(2) {
+            width: 25% !important;
+        }
+
+        /* A5 size style */
+        .invoice-container.a5 {
+            width: 5.83in;
+            height: 8.27in;
+        }
+
+        /* Letter size style */
+        .invoice-container.letter {
+            width: 8.5in;
+            height: 11in;
+        }
+
+        /* Letter landscape */
+        .invoice-container.letter.landscape {
+            width: 11in;
+            height: 8.5in;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+
+        .company-info {
+            width: 50%;
+        }
+
+        .invoice-title {
+            width: 50%;
+            text-align: right;
+        }
+
+        .company-name {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .invoice-number {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .invoice-type {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .balance-due {
+            margin-top: 20px;
+        }
+
+        .balance-label {
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .balance-amount {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .address-section {
+            display: flex;
+            margin-bottom: 30px;
+        }
+
+        .bill-to {
+            width: 60%;
+        }
+
+        .invoice-details {
+            width: 40%;
+        }
+
+        .address-label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .customer-name {
+            font-weight: bold;
+        }
+
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .items-table th {
+            background-color: #333;
+            color: white;
+            padding: 8px;
+            text-align: left;
+        }
+
+        .items-table td {
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .item-desc {
+            color: #666;
+            font-size: 10px;
+        }
+
+        .totals-container {
+            display: flex;
+            margin-bottom: 20px;
+        }
+
+        .notes-section {
+            width: 50%;
+        }
+
+        .totals-section {
+            width: 50%;
+        }
+
+        .totals-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .totals-table td {
+            padding: 5px 10px;
+        }
+
+        .total-label {
+            text-align: right;
+            padding-right: 10px;
+        }
+
+        .total-value {
+            text-align: right;
+            width: 100px;
+        }
+
+        .balance-row {
+            background-color: #f5f5f5;
+        }
+
+        .terms-section {
+            margin-bottom: 20px;
+        }
+
+        .terms-label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .signature-section {
+            margin-top: 50px;
+        }
+
+        .signature-line {
+            width: 200px;
+            border-bottom: 1px solid #000;
+            margin-top: 30px;
+        }
+
+        .footer {
+            margin-top: 50px;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+            font-size: 10px;
+            color: #666;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        /* Color picker styles */
+        .color-picker {
+            display: flex;
+            align-items: center;
+        }
+
+        .color-picker input[type="color"] {
+            width: 30px;
+            height: 30px;
+            margin-right: 10px;
+            border: 1px solid #ddd;
+        }
+
+        .color-picker input[type="text"] {
+            flex: 1;
+        }
+
+        /* Toggle switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+            margin-right: 10px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        /* Item editor */
+        .item-editor {
+            margin-top: 15px;
+        }
+
+        .item-row {
+            display: flex;
+            margin-bottom: 10px;
+            gap: 5px;
+        }
+
+        .item-row input {
+            flex: 1;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+
+        .item-row button {
+            background: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .add-item {
+            background: #4CAF50 !important;
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar Editor -->
+    <div class="sidebar">
+        <div class="sidebar-section">
+            <h3>Template Properties</h3>
+            <div class="form-group">
+                <label for="template-name">Template Name</label>
+                <input type="text" id="template-name" value="Standard Invoice">
+            </div>
+            <div class="form-group">
+                <label for="paper-size">Paper Size</label>
+                <select id="paper-size">
+                    <option value="A4">A4</option>
+                    <option value="Letter">Letter</option>
+                    <option value="A5">A5</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Orientation</label>
+                <div class="form-check">
+                    <input type="radio" id="portrait" name="orientation" value="portrait" checked>
+                    <label for="portrait">Portrait</label>
+                </div>
+                <div class="form-check">
+                    <input type="radio" id="landscape" name="orientation" value="landscape">
+                    <label for="landscape">Landscape</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Margins (in inches)</label>
+                <div style="display: flex; gap: 10px;">
+                    <div style="flex: 1;">
+                        <label>Top</label>
+                        <input type="number" id="margin-top" value="0.7" step="0.1" min="0">
+                    </div>
+                    <div style="flex: 1;">
+                        <label>Bottom</label>
+                        <input type="number" id="margin-bottom" value="0.7" step="0.1" min="0">
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 5px;">
+                    <div style="flex: 1;">
+                        <label>Left</label>
+                        <input type="number" id="margin-left" value="0.55" step="0.1" min="0">
+                    </div>
+                    <div style="flex: 1;">
+                        <label>Right</label>
+                        <input type="number" id="margin-right" value="0.4" step="0.1" min="0">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar-section">
+            <h3>Company Information</h3>
+            <div class="form-group">
+                <label for="company-name">Company Name</label>
+                <input type="text" id="company-name" value="Creative Tech">
+            </div>
+            <div class="form-group">
+                <label for="company-address">Address</label>
+                <textarea id="company-address">Tamil Nadu, India</textarea>
+            </div>
+            <div class="form-group">
+                <label for="company-email">Email</label>
+                <input type="text" id="company-email" value="vedhanayagant2000@gmail.com">
+            </div>
+        </div>
+
+        <div class="sidebar-section">
+            <h3>Invoice Details</h3>
+            <div class="form-group">
+                <label for="invoice-title">Invoice Title</label>
+                <input type="text" id="invoice-title" value="TAX INVOICE">
+            </div>
+            <div class="form-group">
+                <label for="invoice-number">Invoice Number</label>
+                <input type="text" id="invoice-number" value="INV-17">
+            </div>
+            <div class="form-group">
+                <label for="invoice-date">Date</label>
+                <input type="text" id="invoice-date" value="22/07/2025">
+            </div>
+            <div class="form-group">
+                <label for="due-date">Due Date</label>
+                <input type="text" id="due-date" value="22/07/2025">
+            </div>
+            <div class="form-group">
+                <label for="payment-terms">Payment Terms</label>
+                <input type="text" id="payment-terms" value="Due on Receipt">
+            </div>
+            <div class="form-group">
+                <label for="po-number">P.O. Number</label>
+                <input type="text" id="po-number" value="SO-17">
+            </div>
+        </div>
+
+        <div class="sidebar-section">
+            <h3>Client Information</h3>
+            <div class="form-group">
+                <label for="client-name">Client Name</label>
+                <input type="text" id="client-name" value="Rob & Joe Traders">
+            </div>
+            <div class="form-group">
+                <label for="billing-address">Billing Address</label>
+                <textarea id="billing-address">34, Riche Street
+Chennai
+631603 Tamil Nadu
+India</textarea>
+            </div>
+            <div class="form-group">
+                <label for="shipping-address">Shipping Address</label>
+                <textarea id="shipping-address">34, Riche Street
+Chennai
+631603 Tamil Nadu
+India</textarea>
+            </div>
+        </div>
+
+        <div class="sidebar-section">
+            <h3>Items</h3>
+            <div class="item-editor" id="item-editor">
+                <!-- Items will be added here by JavaScript -->
+            </div>
+            <button class="add-item" id="add-item">Add Item</button>
+        </div>
+
+        <div class="sidebar-section">
+            <h3>Colors & Styling</h3>
+            <div class="form-group">
+                <label>Header Color</label>
+                <div class="color-picker">
+                    <input type="color" id="header-color" value="#333333">
+                    <input type="text" id="header-color-text" value="#333333">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Text Color</label>
+                <div class="color-picker">
+                    <input type="color" id="text-color" value="#333333">
+                    <input type="text" id="text-color-text" value="#333333">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Accent Color</label>
+                <div class="color-picker">
+                    <input type="color" id="accent-color" value="#2196F3">
+                    <input type="text" id="accent-color-text" value="#2196F3">
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar-section">
+            <h3>Footer & Notes</h3>
+            <div class="form-group">
+                <label for="invoice-notes">Notes</label>
+                <textarea id="invoice-notes">Thanks for your business.</textarea>
+            </div>
+            <div class="form-group">
+                <label for="invoice-terms">Terms & Conditions</label>
+                <textarea id="invoice-terms">Your company's Terms and Conditions will be displayed here.</textarea>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invoice Preview -->
+    <div class="invoice-preview">
+        <div class="invoice-paper" id="invoice-paper">
+            <div class="invoice-content" id="invoice-content">
+                <div class="invoice-container" id="invoice-preview">
+                    <!-- Invoice content will be generated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample data
+        const invoiceData = {
+            items: [
+                {
+                    id: 1,
+                    name: "Brochure Design",
+                    description: "Brochure Design Single Sided Color",
+                    quantity: "1.00",
+                    unit: "Nos",
+                    rate: "300.00",
+                    discount: "0.00",
+                    taxRate: "7.00%",
+                    taxAmount: "21.00",
+                    amount: "300.00"
+                },
+                {
+                    id: 2,
+                    name: "Web Design Packages(Template) - Basic",
+                    description: "Custom Themes for your business. Inclusive of 10 hours of marketing and annual training",
+                    quantity: "1.00",
+                    unit: "Nos",
+                    rate: "250.00",
+                    discount: "0.00",
+                    taxRate: "4.70%",
+                    taxAmount: "11.75",
+                    amount: "250.00"
+                },
+                {
+                    id: 3,
+                    name: "Print Ad - Basic - Color",
+                    description: "Print Ad 1/8 size Color",
+                    quantity: "1.00",
+                    unit: "Nos",
+                    rate: "80.00",
+                    discount: "0.00",
+                    taxRate: "",
+                    taxAmount: "",
+                    amount: "80.00"
+                }
+            ],
+            subtotal: "630.00",
+            tax1: { name: "Sample Tax1 (4.70%)", amount: "11.75" },
+            tax2: { name: "Sample Tax2 (7.00%)", amount: "21.00" },
+            total: "662.75",
+            paymentMade: "100.00",
+            balanceDue: "562.75",
+            totalInWords: "Indian Rupee Six Hundred Sixty-Two and Seventy-Five Paise Only"
+        };
+
+        // Initialize the invoice editor
+        document.addEventListener('DOMContentLoaded', function() {
+            renderItemEditor();
+            renderInvoicePreview();
+            setupEventListeners();
+        });
+
+        // Render the item editor
+        function renderItemEditor() {
+            const itemEditor = document.getElementById('item-editor');
+            itemEditor.innerHTML = '';
+            
+            invoiceData.items.forEach(item => {
+                const itemRow = document.createElement('div');
+                itemRow.className = 'item-row';
+                itemRow.innerHTML = `
+                    <input type="text" value="${item.name}" placeholder="Item name" data-id="${item.id}" data-field="name">
+                    <input type="text" value="${item.rate}" placeholder="Rate" style="width: 70px;" data-id="${item.id}" data-field="rate">
+                    <button onclick="removeItem(${item.id})">×</button>
+                `;
+                itemEditor.appendChild(itemRow);
+            });
+        }
+
+        // Render the invoice preview
+        function renderInvoicePreview() {
+            const invoicePreview = document.getElementById('invoice-preview');
+            const invoicePaper = document.getElementById('invoice-paper');
+            const invoiceContent = document.getElementById('invoice-content');
+
+            // Get values from form inputs
+            const companyName = document.getElementById('company-name').value;
+            const companyAddress = document.getElementById('company-address').value;
+            const companyEmail = document.getElementById('company-email').value;
+            const invoiceTitle = document.getElementById('invoice-title').value;
+            const invoiceNumber = document.getElementById('invoice-number').value;
+            const invoiceDate = document.getElementById('invoice-date').value;
+            const dueDate = document.getElementById('due-date').value;
+            const paymentTerms = document.getElementById('payment-terms').value;
+            const poNumber = document.getElementById('po-number').value;
+            const clientName = document.getElementById('client-name').value;
+            const billingAddress = document.getElementById('billing-address').value;
+            const shippingAddress = document.getElementById('shipping-address').value;
+            const invoiceNotes = document.getElementById('invoice-notes').value;
+            const invoiceTerms = document.getElementById('invoice-terms').value;
+            
+            // Get colors
+            const headerColor = document.getElementById('header-color').value;
+            const textColor = document.getElementById('text-color').value;
+            const accentColor = document.getElementById('accent-color').value;
+            
+            // Generate items HTML
+            let itemsHtml = '';
+            invoiceData.items.forEach(item => {
+                itemsHtml += `
+                    <tr>
+                        <td>${item.id}</td>
+                        <td>
+                            ${item.name}<br>
+                            <span class="item-desc">${item.description}</span>
+                        </td>
+                        <td>
+                            ${item.quantity}<br>
+                            <span class="item-desc">${item.unit}</span>
+                        </td>
+                        <td>${item.rate}</td>
+                        <td>${item.discount}</td>
+                        <td>${item.taxRate}</td>
+                        <td>${item.taxAmount}</td>
+                        <td>${item.amount}</td>
+                    </tr>
+                `;
+            });
+            
+            // Generate the invoice HTML
+            invoiceContent.innerHTML = `
+                <style>
+                    .invoice-content {
+                        font-family: Arial, sans-serif;
+                        color: ${textColor};
+                    }
+                    .items-table th {
+                        background-color: ${headerColor};
+                    }
+                    .balance-amount, .invoice-type {
+                        color: ${accentColor};
+                    }
+                </style>
+                
+                <div class="header">
+                    <div class="company-info">
+                        <div class="company-name">${companyName}</div>
+                        <div>${companyAddress.replace(/\n/g, '<br>')}</div>
+                        <div>${companyEmail}</div>
+                    </div>
+                    <div class="invoice-title">
+                        <div class="invoice-type">${invoiceTitle}</div>
+                        <div class="invoice-number"># ${invoiceNumber}</div>
+                        <div class="balance-due">
+                            <div class="balance-label">Balance Due</div>
+                            <div class="balance-amount">₹${invoiceData.balanceDue}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="address-section">
+                    <div class="bill-to">
+                        <div class="address-label">Bill To</div>
+                        <div>
+                            <span class="customer-name">${clientName}</span><br>
+                            ${billingAddress.replace(/\n/g, '<br>')}
+                        </div>
+                        <div style="margin-top: 20px;">
+                            <div class="address-label">Ship To</div>
+                            <div>
+                                ${shippingAddress.replace(/\n/g, '<br>')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="invoice-details">
+                        <table>
+                            <tr>
+                                <td>Invoice Date:</td>
+                                <td class="text-right">${invoiceDate}</td>
+                            </tr>
+                            <tr>
+                                <td>Terms:</td>
+                                <td class="text-right">${paymentTerms}</td>
+                            </tr>
+                            <tr>
+                                <td>Due Date:</td>
+                                <td class="text-right">${dueDate}</td>
+                            </tr>
+                            <tr>
+                                <td>P.O.#:</td>
+                                <td class="text-right">${poNumber}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="terms-section">
+                    <div class="terms-label">Subject:</div>
+                    <div>Description</div>
+                </div>
+
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Item & Description</th>
+                            <th>Qty</th>
+                            <th>Rate</th>
+                            <th>Discount</th>
+                            <th>Tax %</th>
+                            <th>Tax</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${itemsHtml}
+                    </tbody>
+                </table>
+
+                <div class="totals-container">
+                    <div class="notes-section">
+                        <div class="terms-label">Notes</div>
+                        <div>${invoiceNotes.replace(/\n/g, '<br>')}</div>
+                    </div>
+                    <div class="totals-section">
+                        <table class="totals-table">
+                            <tr>
+                                <td class="total-label">Sub Total</td>
+                                <td class="total-value">${invoiceData.subtotal}</td>
+                            </tr>
+                            <tr>
+                                <td class="total-label">Discount</td>
+                                <td class="total-value">0.00</td>
+                            </tr>
+                            <tr>
+                                <td class="total-label">${invoiceData.tax1.name}</td>
+                                <td class="total-value">${invoiceData.tax1.amount}</td>
+                            </tr>
+                            <tr>
+                                <td class="total-label">${invoiceData.tax2.name}</td>
+                                <td class="total-value">${invoiceData.tax2.amount}</td>
+                            </tr>
+                            <tr>
+                                <td class="total-label"><b>Total</b></td>
+                                <td class="total-value"><b>₹${invoiceData.total}</b></td>
+                            </tr>
+                            <tr>
+                                <td class="total-label">Payment Made</td>
+                                <td class="total-value" style="color: red;">(-) ${invoiceData.paymentMade}</td>
+                            </tr>
+                            <tr class="balance-row">
+                                <td class="total-label"><b>Balance Due</b></td>
+                                <td class="total-value"><b>₹${invoiceData.balanceDue}</b></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="terms-section">
+                    <div class="terms-label">Total In Words:</div>
+                    <div><i>${invoiceData.totalInWords}</i></div>
+                </div>
+
+                <div class="terms-section">
+                    <div class="terms-label">Terms & Conditions</div>
+                    <div>${invoiceTerms.replace(/\n/g, '<br>')}</div>
+                </div>
+
+                <div class="signature-section">
+                    <div class="terms-label">Authorized Signature</div>
+                    <div class="signature-line"></div>
+                </div>
+
+                <div class="footer">
+                    <div class="text-center">Thank you for your business!</div>
+                    <div class="text-right">1</div>
+                </div>
+            `;
+            // Update paper height based on content
+            updatePaperHeight();
+        }
+
+        //function to adjust paper height
+        function updatePaperHeight() {
+            const invoicePaper = document.getElementById('invoice-paper');
+            const invoiceContent = document.getElementById('invoice-content');
+            
+            // Get natural content height
+            const contentHeight = invoiceContent.scrollHeight;
+            
+            // Convert inches to pixels (assuming 96dpi)
+            const marginTop = parseFloat(document.getElementById('margin-top').value) * 96;
+            const marginBottom = parseFloat(document.getElementById('margin-bottom').value) * 96;
+            
+            // Calculate minimum required height in pixels
+            const minHeight = contentHeight + marginTop + marginBottom;
+            
+            // Convert back to inches for the paper
+            const minHeightInInches = minHeight / 96;
+            
+            // Set paper height (with minimum for empty invoices)
+            invoicePaper.style.height = 'auto';
+            invoicePaper.style.minHeight = `${Math.max(minHeightInInches, 11.69)}in`;
+        }
+
+        // Set up event listeners for real-time updates
+        function setupEventListeners() {
+
+            // Paper size and orientation changes
+            document.getElementById('paper-size').addEventListener('change', updatePaperSettings);
+            document.querySelectorAll('input[name="orientation"]').forEach(radio => {
+                radio.addEventListener('change', updatePaperSettings);
+            });
+            
+            // Margin changes
+            document.getElementById('margin-top').addEventListener('input', updateMargins);
+            document.getElementById('margin-bottom').addEventListener('input', updateMargins);
+            document.getElementById('margin-left').addEventListener('input', updateMargins);
+            document.getElementById('margin-right').addEventListener('input', updateMargins);
+
+            // Company info
+            document.getElementById('company-name').addEventListener('input', renderInvoicePreview);
+            document.getElementById('company-address').addEventListener('input', renderInvoicePreview);
+            document.getElementById('company-email').addEventListener('input', renderInvoicePreview);
+            
+            // Invoice details
+            document.getElementById('invoice-title').addEventListener('input', renderInvoicePreview);
+            document.getElementById('invoice-number').addEventListener('input', renderInvoicePreview);
+            document.getElementById('invoice-date').addEventListener('input', renderInvoicePreview);
+            document.getElementById('due-date').addEventListener('input', renderInvoicePreview);
+            document.getElementById('payment-terms').addEventListener('input', renderInvoicePreview);
+            document.getElementById('po-number').addEventListener('input', renderInvoicePreview);
+            
+            // Client info
+            document.getElementById('client-name').addEventListener('input', renderInvoicePreview);
+            document.getElementById('billing-address').addEventListener('input', renderInvoicePreview);
+            document.getElementById('shipping-address').addEventListener('input', renderInvoicePreview);
+            
+            // Notes & terms
+            document.getElementById('invoice-notes').addEventListener('input', renderInvoicePreview);
+            document.getElementById('invoice-terms').addEventListener('input', renderInvoicePreview);
+            
+            // Colors
+            document.getElementById('header-color').addEventListener('input', function() {
+                document.getElementById('header-color-text').value = this.value;
+                renderInvoicePreview();
+            });
+            document.getElementById('header-color-text').addEventListener('input', function() {
+                document.getElementById('header-color').value = this.value;
+                renderInvoicePreview();
+            });
+            
+            document.getElementById('text-color').addEventListener('input', function() {
+                document.getElementById('text-color-text').value = this.value;
+                renderInvoicePreview();
+            });
+            document.getElementById('text-color-text').addEventListener('input', function() {
+                document.getElementById('text-color').value = this.value;
+                renderInvoicePreview();
+            });
+            
+            document.getElementById('accent-color').addEventListener('input', function() {
+                document.getElementById('accent-color-text').value = this.value;
+                renderInvoicePreview();
+            });
+            document.getElementById('accent-color-text').addEventListener('input', function() {
+                document.getElementById('accent-color').value = this.value;
+                renderInvoicePreview();
+            });
+            
+            // Add item button
+            document.getElementById('add-item').addEventListener('click', function() {
+                const newId = invoiceData.items.length > 0 ? 
+                    Math.max(...invoiceData.items.map(item => item.id)) + 1 : 1;
+                
+                invoiceData.items.push({
+                    id: newId,
+                    name: "New Item",
+                    description: "Item description",
+                    quantity: "1.00",
+                    unit: "Nos",
+                    rate: "0.00",
+                    discount: "0.00",
+                    taxRate: "",
+                    taxAmount: "",
+                    amount: "0.00"
+                });
+                
+                renderItemEditor();
+                renderInvoicePreview();
+                
+                // Scroll to the new item
+                const newItemInput = document.querySelector(`.item-row input[data-id="${newId}"]`);
+                if (newItemInput) {
+                    newItemInput.focus();
+                }
+            });
+            
+            // Item editor - handle changes
+            document.getElementById('item-editor').addEventListener('input', function(e) {
+                if (e.target.tagName === 'INPUT') {
+                    const id = parseInt(e.target.dataset.id);
+                    const field = e.target.dataset.field;
+                    const value = e.target.value;
+                    
+                    const item = invoiceData.items.find(item => item.id === id);
+                    if (item) {
+                        item[field] = value;
+                        
+                        // If rate changed, update amount
+                        if (field === 'rate') {
+                            item.amount = (parseFloat(value) || 0).toFixed(2);
+                        }
+                        
+                        // Recalculate totals
+                        calculateTotals();
+                        renderInvoicePreview();
+                    }
+                }
+            });
+        }
+
+        // Update paper size and orientation
+        function updatePaperSettings() {
+            const invoicePaper = document.getElementById('invoice-paper');
+            const paperSize = document.getElementById('paper-size').value;
+            const orientation = document.querySelector('input[name="orientation"]:checked').value;
+            
+            // Reset all classes
+            invoicePaper.className = 'invoice-paper';
+            
+            // Apply paper size class
+            if (paperSize !== 'A4') {
+                invoicePaper.classList.add(paperSize.toLowerCase());
+            }
+            
+            // Apply orientation class
+            if (orientation === 'landscape') {
+                invoicePaper.classList.add('landscape');
+            }
+            
+            // Update responsive column widths
+            updateColumnWidths();
+            
+            // Re-render to ensure proper layout
+            renderInvoicePreview();
+        }
+        
+        // function to adjust column widths 
+        function updateColumnWidths() {
+            const invoicePaper = document.getElementById('invoice-paper');
+            const isSmallPaper = invoicePaper.classList.contains('a5');
+            
+            // You can add more specific adjustments here based on paper size
+            // For example, reduce description column width on smaller paper
+        }
+        
+        // Update margin values
+        function updateMargins() {
+            const invoicePreview = document.getElementById('invoice-preview');
+            const top = document.getElementById('margin-top').value + 'in';
+            const bottom = document.getElementById('margin-bottom').value + 'in';
+            const left = document.getElementById('margin-left').value + 'in';
+            const right = document.getElementById('margin-right').value + 'in';
+            
+            invoicePreview.style.padding = `${top} ${right} ${bottom} ${left}`;
+        }
+        // Remove an item
+        function removeItem(id) {
+            invoiceData.items = invoiceData.items.filter(item => item.id !== id);
+            renderItemEditor();
+            calculateTotals();
+            renderInvoicePreview();
+        }
+
+        // Calculate invoice totals
+        function calculateTotals() {
+            let subtotal = 0;
+            let tax1Total = 0;
+            let tax2Total = 0;
+            
+            invoiceData.items.forEach(item => {
+                subtotal += parseFloat(item.amount) || 0;
+                
+                if (item.taxRate.includes("4.70%")) {
+                    tax1Total += parseFloat(item.taxAmount) || 0;
+                }
+                
+                if (item.taxRate.includes("7.00%")) {
+                    tax2Total += parseFloat(item.taxAmount) || 0;
+                }
+            });
+            
+            invoiceData.subtotal = subtotal.toFixed(2);
+            invoiceData.tax1.amount = tax1Total.toFixed(2);
+            invoiceData.tax2.amount = tax2Total.toFixed(2);
+            
+            const total = subtotal + tax1Total + tax2Total;
+            invoiceData.total = total.toFixed(2);
+            
+            const balanceDue = total - parseFloat(invoiceData.paymentMade || 0);
+            invoiceData.balanceDue = balanceDue.toFixed(2);
+            
+            // Update total in words
+            invoiceData.totalInWords = numberToWords(total);
+        }
+
+        // Helper function to convert numbers to words
+        function numberToWords(num) {
+            // This is a simplified version - you might want to use a more complete library
+            const units = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
+            const teens = ["Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+            const tens = ["", "Ten", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+            
+            num = parseFloat(num) || 0;
+            const rupees = Math.floor(num);
+            const paise = Math.round((num - rupees) * 100);
+            
+            let words = "";
+            
+            if (rupees === 0) {
+                words = "Zero";
+            } else if (rupees < 10) {
+                words = units[rupees];
+            } else if (rupees < 20) {
+                words = teens[rupees - 10];
+            } else if (rupees < 100) {
+                words = tens[Math.floor(rupees / 10)] + (rupees % 10 !== 0 ? " " + units[rupees % 10] : "");
+            } else if (rupees < 1000) {
+                words = units[Math.floor(rupees / 100)] + " Hundred" + (rupees % 100 !== 0 ? " " + numberToWords(rupees % 100) : "");
+            } else if (rupees < 100000) {
+                words = numberToWords(Math.floor(rupees / 1000)) + " Thousand" + (rupees % 1000 !== 0 ? " " + numberToWords(rupees % 1000) : "");
+            } else if (rupees < 10000000) {
+                words = numberToWords(Math.floor(rupees / 100000)) + " Lakh" + (rupees % 100000 !== 0 ? " " + numberToWords(rupees % 100000) : "");
+            } else {
+                words = numberToWords(Math.floor(rupees / 10000000)) + " Crore" + (rupees % 10000000 !== 0 ? " " + numberToWords(rupees % 10000000) : "");
+            }
+            
+            let result = words + " Rupee";
+            if (rupees !== 1) result += "s";
+            
+            if (paise > 0) {
+                result += " and " + numberToWords(paise) + " Paise";
+                if (paise !== 1) result += "";
+            }
+            
+            return result + " Only";
+        }
+    </script>
+</body>
+</html>
+{% endblock %}

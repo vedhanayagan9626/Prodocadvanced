@@ -1,0 +1,30 @@
+/* Add to your main CSS file */
+.swal2-popup {
+    font-family: 'Roboto', Arial, sans-serif;
+    border-radius: 8px !important;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1) !important;
+}
+
+.swal2-title {
+    color: var(--text-color) !important;
+    font-size: 1.2rem !important;
+}
+
+.swal2-html-container {
+    color: var(--text-color) !important;
+}
+
+.swal2-confirm {
+    background-color: var(--primary-color) !important;
+    border-radius: 4px !important;
+}
+
+.swal2-cancel {
+    background-color: #dc3545 !important;
+    border-radius: 4px !important;
+}
+
+.swal2-toast {
+    box-shadow: 0 0 10px rgba(0,0,0,0.1) !important;
+    border-radius: 4px !important;
+}
