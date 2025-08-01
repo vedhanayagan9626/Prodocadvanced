@@ -1,6 +1,7 @@
-from fastapi import APIRouter, UploadFile, Path, File, Form, HTTPException, Depends, Body
+from fastapi import APIRouter, UploadFile, Path, File, Form, HTTPException, Depends, Body, Query
 from fastapi.responses import JSONResponse, FileResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import TypeDecorator
 import shutil, os, uuid, json, datetime
 from typing import List, Optional
 from models.models import Invoices, CorrectedInvoices, CorrectedItems
@@ -14,20 +15,14 @@ from core import pdf_reader, template_loader
 from core.pdf_reader import extract_text, convert_pdf_to_images, ocr_image
 import importlib
 from datetime import datetime
-import decimal
+import decimal, json
 # from main import app
 # import vendor_parsers.ocr_parser.surekha_goldocr as surekha_goldocr
 # import vendor_parsers.plumber_parser.satruntech_pdf as satruntech_pdf
 
 router = APIRouter()
 
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["*"],  # For development only, restrict in production
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
+
 
 UPLOAD_FOLDER = "uploads"
 
@@ -37,6 +32,44 @@ def get_db():
         yield db
     finally:
         db.close()
+
+@router.get("/invoices/{invoice_no}/corrections/latest")
+def get_latest_correction(
+    invoice_no: str, 
+    db: Session = Depends(get_db)
+):
+    print(f"Attempting to fetch corrections for {invoice_no}") 
+    correction = db.query(CorrectedInvoices)\
+        .filter(CorrectedInvoices.OriginalInvoiceNo == invoice_no)\
+        .order_by(CorrectedInvoices.CorrectionDate.desc())\
+        .first()
+    
+    if not correction:
+        raise HTTPException(status_code=404, detail="No corrections found")
+    
+    # Convert SQLAlchemy model to dictionary
+    correction_dict = {
+        "CorrectionID": correction.CorrectionID,
+        "OriginalInvoiceNo": correction.OriginalInvoiceNo,
+        "FromAddress": correction.FromAddress,
+        "ToAddress": correction.ToAddress,
+        "SupplierGST": correction.SupplierGST,
+        "CustomerGST": correction.CustomerGST,
+        "InvoiceDate": str(correction.InvoiceDate) if correction.InvoiceDate else None,
+        "Total": float(correction.Total) if correction.Total is not None else 0.0,
+        "Subtotal": float(correction.Subtotal) if correction.Subtotal is not None else 0.0,
+        "TaxAmount": float(correction.TaxAmount) if correction.TaxAmount is not None else 0.0,
+        "Taxes": correction.Taxes,
+        "TotalQuantity": float(correction.TotalQuantity) if correction.TotalQuantity is not None else 0.0,
+        "CorrectionDate": str(correction.CorrectionDate) if correction.CorrectionDate else None,
+        "CorrectedBy": correction.CorrectedBy,
+        "Status": correction.Status,
+        "Notes": correction.Notes,
+        "TemplateStyle": json.loads(correction.TemplateStyle) if isinstance(correction.TemplateStyle, str) and correction.TemplateStyle else (correction.TemplateStyle if correction.TemplateStyle else {})
+    }
+    
+    return JSONResponse(content=correction_dict)
+
 
 def load_vendor_parser(vendor_name, mode):
     """
@@ -289,10 +322,85 @@ def get_all_invoices(db: Session = Depends(get_db)):
         for inv in invoices
     ]
 
+@router.get("/invoices/completed")
+async def get_completed_invoices(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    try:
+        # Get all invoices that are marked as completed
+        query = db.query(CorrectedInvoices)
+        
+        total = query.count()
+        invoices = query.order_by(CorrectedInvoices.CorrectionDate.desc()).offset((page - 1) * per_page).limit(per_page).all()
+        
+        result = []
+        for invoice in invoices:
+            items = db.query(CorrectedItems).filter(CorrectedItems.CorrectionID == invoice.CorrectionID).all()
+
+            # Calculate tax amount
+            tax_amount = decimal.Decimal('0')
+            for item in items:
+                if item.Amount is not None and item.Tax is not None:
+                    try:
+                        tax_percent = decimal.Decimal(item.Tax)
+                        item_amount = decimal.Decimal(str(item.Amount)) if item.Amount is not None else decimal.Decimal('0')
+                        tax_amount += item_amount * (tax_percent / decimal.Decimal('100'))
+                    except (ValueError, TypeError, decimal.InvalidOperation):
+                        pass
+            
+            # Extract vendor name from from_address (first line)
+            vendor_name = "Unknown Vendor"
+            if invoice.FromAddress:
+                vendor_name = invoice.FromAddress.split('\n')[0] or "Unknown Vendor"
+            
+            # Convert all decimal values to float for JSON serialization
+            invoice_data = {
+                "invoice_number": invoice.OriginalInvoiceNo,
+                "vendor_name": vendor_name,
+                "date": str(invoice.InvoiceDate) if invoice.InvoiceDate else "Unknown Date",
+                "total_amount": float(invoice.Total) if invoice.Total is not None else 0.0,
+                "tax_amount": float(tax_amount),
+                "item_count": len(items),
+                "from_address": invoice.FromAddress or "",
+                "to_address": invoice.ToAddress or ""
+            }
+            result.append(invoice_data)
+        
+        # Create response headers
+        headers = {
+            "X-Total-Count": str(total),
+            "X-Page": str(page),
+            "X-Per-Page": str(per_page),
+            "X-Total-Pages": str((total + per_page - 1) // per_page)
+        }
+        
+        return JSONResponse(content=result, headers=headers)
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching invoices: {str(e)}")
+    
+
 # get items for a specific invoice by invoice number
-@router.get("/invoices/{invoice_no:path}/items")
-def get_invoice_items(invoice_no: str = Path(...), db: Session = Depends(get_db)):
-    return invoice_crud.get_items_by_invoice_no_orm(db, invoice_no)
+# @router.get("/invoices/{invoice_no:path}/items")
+# def get_invoice_items(invoice_no: str = Path(...), db: Session = Depends(get_db)):
+#     return invoice_crud.get_items_by_invoice_no_orm(db, invoice_no)
+@router.get("/corrections/{correction_id}/items")
+def get_correction_items(correction_id: int, db: Session = Depends(get_db)):
+    items = db.query(CorrectedItems)\
+        .filter(CorrectedItems.CorrectionID == correction_id)\
+        .all()
+    
+    return [{
+        "Description": item.Description,
+        "Quantity": float(item.Quantity) if item.Quantity is not None else 0.0,
+        "Rate": float(item.Rate) if item.Rate is not None else 0.0,
+        "Tax": float(item.Tax) if item.Tax is not None else 0.0,
+        "Amount": float(item.Amount) if item.Amount is not None else 0.0,
+        "HSN": item.HSN,
+        "OriginalItemID": item.OriginalItemID
+    } for item in items]
 
 # get a specific invoice by invoice number
 @router.get("/invoices/{invoice_no:path}", response_model=InvoiceResponse)
@@ -334,6 +442,8 @@ def update_invoice_items(items: List[dict], db: Session = Depends(get_db)):
     return {"detail": "Items updated successfully"}
 
 
+
+
 # delete an invoice by invoice number
 @router.delete("/invoices/{invoice_no}")
 def delete_invoice(invoice_no: str, db: Session = Depends(get_db)):
@@ -361,37 +471,69 @@ def get_all_invoice_history(db: Session = Depends(get_db)):
 
 
 #Scave Correted Invoice from user in invoice correction form
+# Modified save correction endpoint
 @router.post("/invoices/save-correction")
 def save_corrected_invoice(
     correction_data: dict = Body(...),
     db: Session = Depends(get_db)
 ):
     try:
-        # Save corrected invoice header
-        corrected_invoice = CorrectedInvoices(
-            OriginalInvoiceNo=correction_data['invoice_data']['invoice_number'],
-            FromAddress=correction_data['invoice_data']['from_address'],
-            ToAddress=correction_data['invoice_data']['to_address'],
-            SupplierGST=correction_data['invoice_data']['gst_number'],
-            CustomerGST=correction_data['invoice_data'].get('customer_gst'),
-            InvoiceDate=correction_data['invoice_data']['invoice_date'],
-            Total=decimal.Decimal(correction_data['invoice_data']['total']),
-            Subtotal=decimal.Decimal(correction_data['invoice_data']['subtotal']),
-            TaxAmount=decimal.Decimal(correction_data['invoice_data']['tax_amount']),
-            Taxes=correction_data['invoice_data']['taxes'],
-            TotalQuantity=decimal.Decimal(correction_data['invoice_data']['total_quantity']),
-            CorrectedBy="user@example.com",  # Replace with actual user from auth
-            Status="APPROVED"
-        )
+        invoice_no = correction_data['invoice_data']['invoice_number']
+        # Extract styling preferences (should already be a dict from the request)
+        styling = correction_data.get('styling', {})
         
-        db.add(corrected_invoice)
-        db.commit()
-        db.refresh(corrected_invoice)
+        # Check for existing pending correction
+        existing_pending = db.query(CorrectedInvoices).filter(
+            CorrectedInvoices.OriginalInvoiceNo == invoice_no,
+            CorrectedInvoices.Status == 'PENDING_APPROVAL'
+        ).first()
+        
+        if existing_pending:
+            # Update existing correction
+            existing_pending.FromAddress = correction_data['invoice_data']['from_address']
+            existing_pending.ToAddress = correction_data['invoice_data']['to_address']
+            existing_pending.SupplierGST = correction_data['invoice_data']['gst_number']
+            existing_pending.CustomerGST = correction_data['invoice_data'].get('customer_gst')
+            existing_pending.InvoiceDate = correction_data['invoice_data']['invoice_date']
+            existing_pending.Total = decimal.Decimal(correction_data['invoice_data']['total'])
+            existing_pending.Subtotal = decimal.Decimal(correction_data['invoice_data']['subtotal'])
+            existing_pending.TaxAmount = decimal.Decimal(correction_data['invoice_data']['tax_amount'])
+            existing_pending.Taxes = correction_data['invoice_data']['taxes']
+            existing_pending.TotalQuantity = decimal.Decimal(correction_data['invoice_data']['total_quantity'])
+            existing_pending.TemplateStyle = styling
+            existing_pending.CorrectedBy = "current_user@example.com"  # Replace with auth user
+            correction_id = existing_pending.CorrectionID
+            
+            # Delete existing items
+            db.query(CorrectedItems).filter(
+                CorrectedItems.CorrectionID == correction_id
+            ).delete()
+        else:
+            # Create new correction
+            corrected_invoice = CorrectedInvoices(
+                OriginalInvoiceNo=invoice_no,
+                FromAddress=correction_data['invoice_data']['from_address'],
+                ToAddress=correction_data['invoice_data']['to_address'],
+                SupplierGST=correction_data['invoice_data']['gst_number'],
+                CustomerGST=correction_data['invoice_data'].get('customer_gst'),
+                InvoiceDate=correction_data['invoice_data']['invoice_date'],
+                Total=decimal.Decimal(correction_data['invoice_data']['total']),
+                Subtotal=decimal.Decimal(correction_data['invoice_data']['subtotal']),
+                TaxAmount=decimal.Decimal(correction_data['invoice_data']['tax_amount']),
+                Taxes=correction_data['invoice_data']['taxes'],
+                TotalQuantity=decimal.Decimal(correction_data['invoice_data']['total_quantity']),
+                TemplateStyle=styling,
+                CorrectedBy="current_user@example.com",
+                Status="APPROVED"
+            )
+            db.add(corrected_invoice)
+            db.flush()
+            correction_id = corrected_invoice.CorrectionID
         
         # Save corrected items
         for item in correction_data['items']:
             corrected_item = CorrectedItems(
-                CorrectionID=corrected_invoice.CorrectionID,
+                CorrectionID=correction_id,
                 OriginalItemID=item.get('original_item_id'),
                 Description=item['description'],
                 Quantity=decimal.Decimal(item['quantity']),
@@ -403,69 +545,46 @@ def save_corrected_invoice(
             db.add(corrected_item)
         
         db.commit()
-        
-        return {"status": "success", "correction_id": corrected_invoice.CorrectionID}
+        return {"status": "success", "correction_id": correction_id}
     
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/invoices/{invoice_no}/corrections")
-def get_invoice_corrections(
-    invoice_no: str,
+
+
+
+
+@router.delete("/invoices/{invoice_no}/delete")
+def delete_invoice_api(
+    invoice_no: str = Path(..., description="Invoice number to delete"),
     db: Session = Depends(get_db)
 ):
-    corrections = db.query(CorrectedInvoices)\
-        .filter(CorrectedInvoices.OriginalInvoiceNo == invoice_no)\
-        .order_by(CorrectedInvoices.CorrectionDate.desc())\
-        .all()
-    
-    if not corrections:
-        raise HTTPException(status_code=404, detail="No corrections found for this invoice")
-    
-    return corrections
-
-
-@router.get("/invoices/completed", response_model=List[InvoicePreviewResponse])
-def get_completed_invoices(db: Session = Depends(get_db)):
-    # Get all invoices that are marked as completed
-    invoices = db.query(Invoices).all()
-    
-    result = []
-    for invoice in invoices:
-        items = db.query(CorrectedItems).filter(CorrectedItems.CorrectionID == invoice.InvoiceNo).all()
-
-        # Calculate tax amount (simplified - you might need to adjust based on your tax calculation)
-        tax_amount = decimal.Decimal('0')
-        for item in items:
-            if item.Amount is not None and item.Tax is not None:
-                try:
-                    tax_percent = decimal.Decimal(item.Tax)
-                    item_amount = decimal.Decimal(str(item.Amount)) if item.Amount is not None else decimal.Decimal('0')
-                    tax_amount += item_amount * (tax_percent / decimal.Decimal('100'))
-                except (ValueError, TypeError, decimal.InvalidOperation):
-                    pass
+    try:
+        # First find the correction record(s) for this invoice
+        corrections = db.query(CorrectedInvoices).filter(
+            CorrectedInvoices.OriginalInvoiceNo == invoice_no
+        ).all()
         
-        # Extract vendor name from from_address (first line)
-        vendor_name = "Unknown Vendor"
-        if invoice.FromAddress:
-            vendor_name = invoice.FromAddress.split('\n')[0] or "Unknown Vendor"
+        if not corrections:
+            raise HTTPException(status_code=404, detail="Invoice not found")
+            
+        # Delete all corrected items for each correction record
+        for correction in corrections:
+            db.query(CorrectedItems).filter(
+                CorrectedItems.CorrectionID == correction.CorrectionID
+            ).delete()
+            
+        # Delete all correction records for this invoice
+        db.query(CorrectedInvoices).filter(
+            CorrectedInvoices.OriginalInvoiceNo == invoice_no
+        ).delete()
         
-        # Ensure required fields have values
-        invoice_date = invoice.InvoiceDate or "Unknown Date"
-        total_amount = invoice.Total if invoice.Total is not None else decimal.Decimal('0')
-        from_address = invoice.FromAddress or ""
-        to_address = invoice.ToAddress or ""
+        db.commit()
+            
+        return {"status": "success", "message": f"Invoice {invoice_no} deleted"}
         
-        result.append(InvoicePreviewResponse(
-            invoice_number=invoice.InvoiceNo,
-            vendor_name=vendor_name,
-            date=invoice_date,
-            total_amount=total_amount,
-            tax_amount=tax_amount,
-            item_count=len(items),
-            from_address=from_address,
-            to_address=to_address
-        ))
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
     
-    return result

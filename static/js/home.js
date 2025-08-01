@@ -16,14 +16,36 @@ window.redirectToOCR = redirectToOCR;
 
 // Toggle between content sections
 function showContent(sectionId, event) {
+    // Hide all content sections
     document.querySelectorAll('.content-section').forEach(section => {
         section.style.display = 'none';
     });
-    document.getElementById(sectionId).style.display = 'block';
-    document.querySelectorAll('.sidebar-menu li').forEach(item => {
-        item.classList.remove('active');
-    });
-    if (event && event.currentTarget) event.currentTarget.classList.add('active');
+    
+    // Show the selected section
+    const section = document.getElementById(sectionId);
+    if (section) {
+        section.style.display = 'block';
+        
+        // Load data for specific sections
+        if (sectionId === 'completed-list') {
+            // Use setTimeout to ensure DOM is ready
+            setTimeout(() => {
+                if (typeof loadCompletedInvoices === 'function') {
+                    loadCompletedInvoices();
+                }
+            }, 50);
+        } else if (sectionId === 'all-documents') {
+            fetchDocuments();
+        }
+    }
+    
+    // Update active menu item
+    if (event && event.currentTarget) {
+        document.querySelectorAll('.sidebar-menu li').forEach(item => {
+            item.classList.remove('active');
+        });
+        event.currentTarget.classList.add('active');
+    }
 }
 window.showContent = showContent;
 

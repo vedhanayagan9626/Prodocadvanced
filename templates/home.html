@@ -9,6 +9,9 @@
     <!-- Google Fonts (Roboto) -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:400,500,700&display=swap">
     <link rel="stylesheet" href="static/css/notifications.css">
+    <!-- In your HTML head section -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root {
             --primary-color: #4285f4;
@@ -118,6 +121,8 @@
             color: var(--text-color);
             letter-spacing: 0.5px;
         }
+
+
         .upload-btn {
             background: var(--primary-color);
             color: #fff;
@@ -331,6 +336,40 @@
         select::-webkit-inner-spin-button, select::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         select { -moz-appearance: none; -webkit-appearance: none; appearance: none; }
         
+
+          .invoice-paper {
+            font-family: Arial, sans-serif;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            position: relative;
+            margin: 0 auto;
+            box-sizing: border-box;
+            overflow: hidden;
+            padding: 0.7in; /* Default padding */
+            page-break-inside: avoid; /* Prevent content splitting */
+            aspect-ratio: 1/1.414; /* Default A4 ratio */
+            display: flex;
+            flex-direction: column;
+        }
+        /* Paper size specific styles */
+        .invoice-paper.a4 {
+            width: 8.27in;
+            min-height: 11.69in;
+            aspect-ratio: 1/1.414; /* A4 ratio */
+        }
+
+        .invoice-paper.letter {
+            width: 8.5in;
+            min-height: 11in;
+            aspect-ratio: 1/1.294; /* Letter ratio */
+        }
+
+        .invoice-paper.a5 {
+            width: 5.83in;
+            min-height: 8.27in;
+            aspect-ratio: 1/1.414; /* A5 ratio (same as A4 but smaller) */
+        }
+
         /* Add these to your existing CSS */
         .vendor-info {
             display: flex;
@@ -356,6 +395,31 @@
             border-radius: 5px;
             font-size: 15px;
             transition: all 0.2s;
+        }
+        
+        .loading-text, .no-data, .error-text {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-style: italic;
+        }
+
+        .loading-text {
+            color: #4285f4;
+        }
+
+        .error-text {
+            color: #dc3545;
+        }
+
+        .error-text button {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            cursor: pointer;
         }
 
         .btn-download {
@@ -397,7 +461,7 @@
     <!-- Sidebar Navigation -->
     <div class="sidebar">
         <div class="sidebar-header">
-            <img src="static/logo.svg" alt="Logo">
+            <img src="static/logos/invoice1.png" alt="Logo" class="logo">
             <h2>DocManage</h2>
         </div>
         <ul class="sidebar-menu">
@@ -468,7 +532,7 @@
             <div class="card">
                 <div class="content-header">
                     <h2>Completed Bills</h2>
-                    <div>
+                    <div style="display: inline-flex;">
                         <button class="upload-btn" onclick="document.getElementById('file-upload').click()">
                             <i class="fas fa-cloud-upload-alt"></i> Upload Bill
                         </button>
@@ -494,6 +558,11 @@
                         <!-- Data will be populated by JavaScript -->
                     </tbody>
                 </table>
+                <div class="pagination-controls">
+                    <button id="prev-page" disabled>Previous</button>
+                    <span id="page-info">Page 1 of 1</span>
+                    <button id="next-page" disabled>Next</button>
+                </div>
             </div>
         </div>
 
@@ -519,9 +588,10 @@
     <!-- JS (order matters; FontAwesome must load before) -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- In your HTML head section -->
     <script type="module" src="/static/js/notifications.js"></script>
     <script type="module" src="/static/js/home.js"></script>
-    <!-- In your main HTML file, add this script include -->
-    <script src="/static/js/completed_list.js"></script>
+    <!-- <script type="module" src="/static/js/completed_list.js"></script> -->
+    <script type="module" src="/static/js/completed_list.js"></script>
 </body>
 </html>

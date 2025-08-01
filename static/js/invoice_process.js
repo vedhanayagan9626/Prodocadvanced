@@ -917,7 +917,15 @@ function handleSaveInvoice() {
         invoice_data: {},
         items: []
     };
-    
+    const styling = {
+        paperSize: $('#paperSizeSelect').val(),
+        headerColor: $('#headerColor').val(),
+        textColor: $('#textColor').val(),
+        accentColor: $('#accentColor').val(),
+        topMargin: $('#topMargin').val()
+        //if any styles enabled in invoice editor add them here 
+    };
+
     // Collect basic invoice data (same as before)
     $('#invoiceForm input, #invoiceForm textarea').each(function() {
         const field = $(this).data('field');
@@ -929,7 +937,9 @@ function handleSaveInvoice() {
     // Add calculated fields
     updatedInvoice.invoice_data.subtotal = $('#subtotal').val();
     updatedInvoice.invoice_data.tax_amount = $('#taxAmount').val();
-    
+        // Add to your correction data
+    updatedInvoice.styling = styling;
+
     // Collect items data
     $('#itemsTableBody tr').each(function() {
         const row = $(this);
@@ -946,7 +956,7 @@ function handleSaveInvoice() {
             updatedInvoice.items.push(item);
         }
     });
-    
+    console.log("Data being sent to backend:", updatedInvoice);
     // Call the new correction endpoint
     $.ajax({
         url: '/api/v1/invoices/save-correction',

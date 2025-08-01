@@ -2,14 +2,28 @@ from __future__ import annotations
 from typing import List, Optional
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
-from sqlalchemy import DECIMAL, Date, DateTime, ForeignKeyConstraint, Identity, Integer, PrimaryKeyConstraint, String, Unicode, text, ForeignKey, UnicodeText
+from sqlalchemy import TypeDecorator,DECIMAL, Date, DateTime, ForeignKeyConstraint, Identity, Integer, PrimaryKeyConstraint, String, Unicode, text, ForeignKey, UnicodeText, JSON
 import datetime
-
 import decimal
+import json
 
 class Base(DeclarativeBase):
     pass
 
+class JSONEncodedDict(TypeDecorator):
+    """Represents an immutable structure as a json-encoded string."""
+    
+    impl = UnicodeText
+    
+    def process_bind_param(self, value, dialect):
+        if value is not None:
+            value = json.dumps(value)
+        return value
+    
+    def process_result_value(self, value, dialect):
+        if value is not None:
+            value = json.loads(value)
+        return value
 
 class ApiKeyTable(Base):
     __tablename__ = 'ApiKeyTable'
@@ -158,14 +172,36 @@ class CorrectedInvoices(Base):
     CorrectedBy: Mapped[Optional[str]] = mapped_column(String(100))
     Status: Mapped[str] = mapped_column(String(20), default='PENDING_APPROVAL')
     Notes: Mapped[Optional[str]] = mapped_column(UnicodeText)
+    TemplateStyle: Mapped[Optional[dict]] = mapped_column(JSONEncodedDict, nullable=True)  # Stores styling preferences as JSON
     
-    Items: Mapped[List['CorrectedItems']] = relationship('CorrectedItems', back_populates='Correction')
+    Items: Mapped[List['CorrectedItems']] = relationship('CorrectedItems', back_populates='Correction', cascade="all, delete-orphan")
 
+    def as_dict(self):
+        return {
+            "correction_id": self.CorrectionID,
+            "original_invoice_no": self.OriginalInvoiceNo,
+            "from_address": self.FromAddress,
+            "to_address": self.ToAddress,
+            "supplier_gst": self.SupplierGST,
+            "customer_gst": self.CustomerGST,
+            "invoice_date": self.InvoiceDate,
+            "total": float(self.Total) if self.Total is not None else None,
+            "subtotal": float(self.Subtotal) if self.Subtotal is not None else None,
+            "tax_amount": float(self.TaxAmount) if self.TaxAmount is not None else None,
+            "taxes": self.Taxes,
+            "total_quantity": float(self.TotalQuantity) if self.TotalQuantity is not None else None,
+            "correction_date": self.CorrectionDate.isoformat() if self.CorrectionDate else None,
+            "corrected_by": self.CorrectedBy,
+            "status": self.Status,
+            "notes": self.Notes,
+            "template_style": self.TemplateStyle if self.TemplateStyle else None
+        }
+    
 class CorrectedItems(Base):
     __tablename__ = 'CorrectedItems'
     
     CorrectionItemID: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    CorrectionID: Mapped[int] = mapped_column(Integer, ForeignKey('CorrectedInvoices.CorrectionID'))
+    CorrectionID: Mapped[int] = mapped_column(Integer, ForeignKey('CorrectedInvoices.CorrectionID', ondelete='CASCADE'))
     OriginalItemID: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('Items.ItemID'))
     Description: Mapped[Optional[str]] = mapped_column(UnicodeText)
     Quantity: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(18, 2))
@@ -174,4 +210,17 @@ class CorrectedItems(Base):
     Amount: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(18, 2))
     HSN: Mapped[Optional[str]] = mapped_column(String(50))
     
-    Correction: Mapped['CorrectedInvoices'] = relationship('CorrectedInvoices', back_populates='Items') 
+    Correction: Mapped['CorrectedInvoices'] = relationship('CorrectedInvoices', back_populates='Items')
+
+    def as_dict(self):
+        return {
+            "correction_item_id": self.CorrectionItemID,
+            "correction_id": self.CorrectionID,
+            "original_item_id": self.OriginalItemID,
+            "description": self.Description,
+            "quantity": float(self.Quantity) if self.Quantity is not None else None,
+            "rate": float(self.Rate) if self.Rate is not None else None,
+            "tax": float(self.Tax) if self.Tax is not None else None,
+            "amount": float(self.Amount) if self.Amount is not None else None,
+            "hsn": self.HSN
+        }
