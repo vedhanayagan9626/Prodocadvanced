@@ -1,5 +1,5 @@
 vendor: Satrun Technologies
-keywords: ["SATRUN TECHNOLOGIES", "satruntechnologies@hotmail.com"]
+keywords: ["SATRUN TECHNOLOGIES", "satruntechnologies@hotmail.com", "SATRUNTECHNOLOGIES"]
 fields:
   invoice_number: "Invoice No[:\\s]*([A-Z0-9-]+)"
   invoice_date: "Invoice date[:\\s]*([\\d/-]+)"

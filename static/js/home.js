@@ -7,6 +7,7 @@ let allDocuments = [];
 let filteredDocuments = [];
 let currentTypeFilter = 'all';
 let currentDateFilter = 'all';
+const token = localStorage.getItem('authToken');
 
 // Expose functions to the global scope
 window.showContent = showContent;
@@ -14,13 +15,69 @@ window.toggleFileSelection = toggleFileSelection;
 window.toggleAllFiles = toggleAllFiles;
 window.redirectToOCR = redirectToOCR;
 
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+}
+const cookieToken = getCookie('token');
+const localToken = localStorage.getItem('authToken');
+if (!cookieToken || !localToken) {
+    window.location.href = '/login';
+}
+
+async function checkAuth() {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+        window.location.href = '/login';
+        return false;
+    }
+    
+    try {
+        const response = await fetch('/api/v1/auth/verify-token', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Invalid token');
+        }
+        return true;
+    } catch (error) {
+        console.error('Auth check failed:', error);
+        localStorage.removeItem('authToken');
+        window.location.href = '/login';
+        return false;
+    }
+}
+
+// Update page title when switching sections
+function updatePageTitle(sectionId) {
+    const titles = {
+        'all-documents': 'All Documents',
+        'completed-list': 'Completed Bills',
+        'choose-template': 'Choose Template',
+        'update-template': 'Update Template',
+        'index': 'Invoice Editor',
+    };
+    
+    const titleElement = document.querySelector('.page-title');
+    if (titleElement && titles[sectionId]) {
+        titleElement.textContent = titles[sectionId];
+    }
+}
+
 // Toggle between content sections
 function showContent(sectionId, event) {
+
     // Hide all content sections
     document.querySelectorAll('.content-section').forEach(section => {
         section.style.display = 'none';
     });
     
+    updatePageTitle(sectionId);
+
     // Show the selected section
     const section = document.getElementById(sectionId);
     if (section) {
@@ -116,6 +173,7 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 // Function to upload file
 async function uploadFile(file) {
+    if (!await checkAuth()) return false;
     // Validate file type
     if (!SUPPORTED_FILE_TYPES.includes(file.type)) {
         showError(`Unsupported file type: ${file.name}`);
@@ -134,6 +192,7 @@ async function uploadFile(file) {
     try {
         const response = await fetch('/api/v1/upload-doc', {
             method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
             body: formData
         });
         
@@ -156,6 +215,7 @@ async function uploadFile(file) {
 
 // Function to fetch and display documents
 async function fetchDocuments() {
+    if (!await checkAuth()) return;
     try {
         const response = await fetch('/api/v1/list-docs');
         if (response.ok) {

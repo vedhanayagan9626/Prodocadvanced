@@ -3,230 +3,524 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Invoice Extractor</title>
+  <title>Invoice Processor</title>
 
   <!-- Bootstrap + Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-
+  <!-- <link rel="stylesheet" href="/static/css/invoiceeditorstyle.css"> -->
   <!-- DataTables -->
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-
-
- <body class="bg-light">
-     <div class="d-flex justify-content-end mb-3">
-    <button class="btn btn-sm position-fixed top-0 end-0 m-3" 
-            onclick="window.location.href='/'" 
-            style="z-index: 1000; background: rgba(255,255,255,0.7);">
-      <i class="bi bi-x-lg fs-4"></i>
-    </button>
-  </div>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
-  <div class="container-fluid mt-4">
-    <h2 class="mb-4">Process Invoice</h2>
-    <div class="row">
-      <!-- LEFT: File Upload and Preview Section -->
-      <div class="col-md-4" style="position: relative;">
-        <form id="uploadForm">
-          <div class="mb-3">
-            <div class="form-group">
-              <label for="currentFilename" class="form-label"><strong>Processing File:</strong></label>
-              <div class="border p-2 rounded bg-light">
-                <span id="currentFilename" class="text-primary"></span>
+  <style>
+    body {
+      font-family: 'Roboto', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      color: var(--text-color);
+      background-color: #f8f9fa;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    
+    .main-header {
+      position: sticky;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: #fff;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+    }
+
+    .header-container {
+      font-family: 'Segoe UI', sans-serif;
+      width: 100%;
+      padding: 0 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 200px;
+    }
+
+    .company-logo {
+      height: 36px;
+      width: auto;
+    }
+
+    .company-name {
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--primary-dark);
+    }
+
+    .header-center {
+      flex: 1;
+      text-align: center;
+      padding: 0 20px;
+    }
+
+    .page-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-color);
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      min-width: 200px;
+      justify-content: flex-end;
+    }
+
+    .org-name {
+      font-weight: 500;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    .user-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 10px;
+      border-radius: 20px;
+      transition: background 0.2s;
+    }
+
+    .user-btn:hover {
+      background: #f5f5f5;
+    }
+
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .user-dropdown {
+      position: relative;
+      display: inline-block;
+    }
+
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      right: 0;
+      background-color: #fff;
+      min-width: 220px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+      border-radius: 8px;
+      z-index: 1;
+      padding: 10px 0;
+    }
+
+    .user-dropdown:hover .dropdown-content {
+      display: block;
+    }
+
+    .dropdown-content a {
+      color: var(--text-color);
+      padding: 10px 16px;
+      text-decoration: none;
+      display: block;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+
+    .dropdown-content a:hover {
+      background: #f5f5f5;
+    }
+
+    .dropdown-content a i {
+      width: 20px;
+      text-align: center;
+      margin-right: 8px;
+      color: var(--text-secondary);
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      padding: 10px 16px;
+      margin-bottom: 5px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .dropdown-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-right: 10px;
+    }
+
+    .user-info div {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .user-info strong {
+      font-size: 14px;
+    }
+
+    .user-info small {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    
+    .content-wrapper {
+      flex: 1;
+      display: flex;
+      position: relative;
+      flex-direction: column;
+      margin-top: 10px;
+      margin-bottom: 10px;
+      overflow: hidden;
+      transform: scale(0.8);
+      transform-origin: top center;
+      width: 125%;
+      margin-left: -12.5%;
+      height: calc(100vh - 100px);
+    }
+    
+    .container-fluid.main-content {
+      flex: 1;
+      padding: 15px;
+      overflow-y: auto;
+    }
+    
+    .col-md-4 {
+      width: 30%;
+      margin: 0 1.66%;
+    }
+    
+    .close-btn-container {
+      position: absolute;
+      top: 20px;
+      right: 14px;
+      z-index: 1001;
+    }
+    
+    .main-footer {
+      position: sticky;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 40px;
+      background: #fff;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .footer-container {
+      width: 100%;
+      padding: 0 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .footer-left span {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .footer-right {
+      display: flex;
+      gap: 15px;
+    }
+
+    .footer-right a {
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .footer-right a:hover {
+      color: var(--primary-color);
+    }
+  </style>
+</head>
+
+<body class="bg-light">
+  <!-- Header -->
+  <header class="main-header">
+    <div class="header-container">
+      <div class="header-left">
+        <img src="static/logos/invoice1.png" alt="Company Logo" class="company-logo">
+        <span class="company-name">ProDoc</span>
+      </div>
+      
+      <div class="header-center">
+        <h1 class="page-title">Invoice Processor</h1>
+      </div>
+      
+      <div class="header-right">
+        <span class="org-name">CTI Corporation</span>
+        <div class="user-dropdown">
+          <button class="user-btn">
+            <img src="static/userpng/vedha.jpeg" alt="User" class="user-avatar">
+            <i class="fas fa-caret-down"></i>
+          </button>
+          <div class="dropdown-content">
+            <div class="user-info">
+              <img src="static/userpng/vedha.jpeg" alt="User" class="dropdown-avatar">
+              <div>
+                <strong>Shaam Vedha</strong>
+                <small>shaamvedha.ct@gmail.com</small>
+              </div>
+            </div>
+            <a href="#"><i class="fas fa-user"></i> Profile</a>
+            <a href="#"><i class="fas fa-cog"></i> Settings</a>
+            <a href="#"><i class="fas fa-sign-out-alt"></i> Logout</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Wrapper -->
+  <div class="content-wrapper">
+    <div class="close-btn-container">
+      <button class="btn btn-sm btn-light rounded-circle" onclick="window.location.href='/'" 
+              style="width: 36px; height: 36px;background-color: tomato;">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    
+    <div class="container-fluid main-content mt-2">
+      <div class="row">
+        <!-- LEFT: File Upload and Preview Section -->
+        <div class="col-md-4" style="position: relative;">
+          <form id="uploadForm">
+            <div class="mb-3">
+              <div class="form-group">
+                <label for="currentFilename" class="form-label"><strong>Processing File:</strong></label>
+                <div class="border p-2 rounded bg-light">
+                  <span id="currentFilename" class="text-primary"></span>
+                </div>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="modeSelect" class="form-label">Processing Mode</label>
+              <select class="form-select" id="modeSelect" name="mode" required>
+                <option value="text">Text PDF</option>
+                <option value="ocr">Scanned Image</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary" style="background-color: #0db561; border-color: #0db561;">Process & Extract</button>
+          </form>
+          
+          <div id="previewWrapper" style="overflow:hidden; width:100%; height:100%;">
+            <img id="previewImg" style="max-width:none; max-height:none; display:none;" />
+            <canvas id="pdfViewer" style="display:none;"></canvas>
+          </div>
+        
+          <div id="errorMessage" class="alert alert-danger mt-3" style="display:none;"></div>
+          <div id="successMessage" class="alert alert-success mt-3" style="display:none;"></div>
+        </div>
+
+        <!-- MIDDLE: Invoice Editor Form -->
+        <div class="col-md-4 position-relative" id="extractedSection" style="display:none;">
+          <div id="datatableSpinnerOverlay" style="display:none;position:absolute;top:0;left:0;width:100%;height:100%;z-index:1000;background:rgba(255,255,255,0.5);">
+            <div class="d-flex justify-content-center align-items-center" style="height:100%;">
+              <div class="spinner-border text-primary" style="width:3rem;height:3rem;" role="status">
+                <span class="visually-hidden">Loading...</span>
               </div>
             </div>
           </div>
-          <div class="mb-3">
-            <label for="modeSelect" class="form-label">Processing Mode</label>
-            <select class="form-select" id="modeSelect" name="mode" required>
-              <option value="text">Text PDF</option>
-              <option value="ocr">Scanned Image</option>
-            </select>
-          </div>
-          <button type="submit" class="btn btn-primary">Process & Extract</button>
-        </form>
-        
-        <!-- File Preview Section -->
-      <div id="previewWrapper" style="width:100%;height:50vh;min-height:300px;max-height:60vh;overflow:hidden;position:relative;border:1px solid #ccc;margin-top:20px;">
-          <img id="previewImg" style="display:none;position:absolute;left:0;top:0;cursor:grab;max-width:none;max-height:none;" />
-          <canvas id="pdfViewer" style="display:none;position:absolute;left:0;top:0;cursor:grab;"></canvas>
-          <div id="uploadSpinner" class="spinner-border text-primary" role="status" style="display:none;position:absolute;top:50%;left:50%;">
-              <span class="visually-hidden">Loading...</span>
-          </div>
-      </div>
-        <div id="errorMessage" class="alert alert-danger mt-3" style="display:none;"></div>
-        <div id="successMessage" class="alert alert-success mt-3" style="display:none;"></div>
-      </div>
+          
+          <div class="card h-100">
+            <div class="card-header text-white" style="background-color: #0db561;">
+              <h5 class="mb-0">Invoice Editor</h5>
+            </div>
+            <div class="card-body" style="overflow-y: auto;">
+              <div class="preview-controls mb-3">
+                <div class="row">
+                  <div class="col-md-6">
+                    <label class="form-label">Paper Size</label>
+                    <select class="form-select" id="paperSizeSelect">
+                      <option value="A4">A4</option>
+                      <option value="Letter">Letter</option>
+                      <option value="A5">A5</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Top Margin (inches)</label>
+                    <input type="number" class="form-control" id="topMargin" value="0.7" step="0.1" min="0">
+                  </div>
+                </div>
+                <div class="row mt-2">
+                  <div class="col-md-4">
+                    <label class="form-label">Header Color</label>
+                    <input type="color" class="form-control p-1" id="headerColor" value="#333333" onchange="updatePreviewColors()">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Text Color</label>
+                    <input type="color" class="form-control p-1" id="textColor" value="#333333" onchange="updatePreviewColors()">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Accent Color</label>
+                    <input type="color" class="form-control p-1" id="accentColor" value="#2196F3" onchange="updatePreviewColors()">
+                  </div>
+                </div>
+              </div>
 
-      <!-- MIDDLE: Invoice Editor Form -->
-      <div class="col-md-4 position-relative" id="extractedSection" style="display:none;">
-        <div id="datatableSpinnerOverlay" style="display:none;position:absolute;top:0;left:0;width:100%;height:100%;z-index:1000;background:rgba(255,255,255,0.5);">
-          <div class="d-flex justify-content-center align-items-center" style="height:100%;">
-            <div class="spinner-border text-primary" style="width:3rem;height:3rem;" role="status">
-              <span class="visually-hidden">Loading...</span>
+              <form id="invoiceForm">
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label for="invoiceNumber" class="form-label">Invoice Number</label>
+                    <input type="text" class="form-control" id="invoiceNumber" data-field="invoice_number">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="invoiceDate" class="form-label">Date</label>
+                    <input type="text" class="form-control" id="invoiceDate" data-field="invoice_date">
+                  </div>
+                </div>
+                
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label for="fromAddress" class="form-label">From (Supplier)</label>
+                    <textarea class="form-control" id="fromAddress" rows="3" data-field="from_address"></textarea>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="toAddress" class="form-label">To (Customer)</label>
+                    <textarea class="form-control" id="toAddress" rows="3" data-field="to_address"></textarea>
+                  </div>
+                </div>
+                
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label for="supplierGst" class="form-label">Supplier GSTIN</label>
+                    <input type="text" class="form-control" id="supplierGst" data-field="gst_number">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="customerGst" class="form-label">Customer GSTIN</label>
+                    <input type="text" class="form-control" id="customerGst" data-field="customer_gst">
+                  </div>
+                </div>
+                
+                <h5 class="mt-4 mb-3">Items</h5>
+                <div class="table-responsive">
+                  <table class="table table-bordered" id="itemsTable">
+                    <thead class="table-light">
+                      <tr>
+                        <th width="35%">Description</th>
+                        <th width="12%">Qty</th>
+                        <th width="12%">Rate</th>
+                        <th width="12%">Tax %</th>
+                        <th width="12%">Amount</th>
+                        <th width="5%"></th>
+                      </tr>
+                    </thead>
+                    <tbody id="itemsTableBody"></tbody>
+                  </table>
+                </div>
+                
+                <div class="row mt-2">
+                  <div class="col-md-12">
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="addItemBtn">
+                      <i class="bi bi-plus-circle"></i> Add Item
+                    </button>
+                  </div>
+                </div>
+                
+                <div class="row mt-3">
+                  <div class="col-md-6">
+                    <div class="mb-3">
+                      <label for="subtotal" class="form-label">Subtotal</label>
+                      <input type="text" class="form-control" id="subtotal" readonly>
+                    </div>
+                    <div class="mb-3">
+                      <label for="taxAmount" class="form-label">Tax Amount</label>
+                      <input type="text" class="form-control" id="taxAmount" readonly>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="mb-3">
+                      <label for="total" class="form-label">Total</label>
+                      <input type="text" class="form-control" id="total" data-field="total" readonly>
+                    </div>
+                    <div class="mb-3">
+                      <label for="totalQuantity" class="form-label">Total Quantity</label>
+                      <input type="text" class="form-control" id="totalQuantity" data-field="total_quantity">
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="mb-3">
+                  <label for="taxDetails" class="form-label">Tax Details</label>
+                  <textarea class="form-control" id="taxDetails" rows="2" data-field="taxes"></textarea>
+                </div>
+              </form>
             </div>
           </div>
         </div>
-        
-              <div class="card h-100">
-                  <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Invoice Editor</h5>
-                  </div>
-                  <div class="card-body" style="overflow-y: auto;">
-                        <div class="preview-controls mb-3">
-              <div class="row">
-                <div class="col-md-6">
-                  <label class="form-label">Paper Size</label>
-                  <select class="form-select" id="paperSizeSelect">
-                    <option value="A4">A4</option>
-                    <option value="Letter">Letter</option>
-                    <option value="A5">A5</option>
-                  </select>
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">Top Margin (inches)</label>
-                  <input type="number" class="form-control" id="topMargin" value="0.7" step="0.1" min="0">
-                </div>
+
+        <!-- RIGHT: Invoice Preview -->
+        <div class="col-md-4">
+          <div class="card h-100">
+            <div class="card-header text-white" style="background-color: #0db561;">
+              <h5 class="mb-0" style="display: inline-block;">Invoice Preview</h5>
+              <div class="btn-group" style="display: inline-block;">
+                <select class="form-select form-select-sm" id="templateSelect" style="width: 150px; display: inline-block;">
+                  <option value="default">Default Template</option>
+                  <option value="classic">Classic Template</option>
+                  <option value="modern">Modern Template</option>
+                  <option value="minimal">Minimal Template</option>
+                  <option value="professional">Professional Template</option>
+                </select>
               </div>
-              <div class="row mt-2">
-                  <div class="col-md-4">
-                      <label class="form-label">Header Color</label>
-                      <input type="color" class="form-control p-1" id="headerColor" value="#333333" onchange="updatePreviewColors()">
-                  </div>
-                  <div class="col-md-4">
-                      <label class="form-label">Text Color</label>
-                      <input type="color" class="form-control p-1" id="textColor" value="#333333" onchange="updatePreviewColors()">
-                  </div>
-                  <div class="col-md-4">
-                      <label class="form-label">Accent Color</label>
-                      <input type="color" class="form-control p-1" id="accentColor" value="#2196F3" onchange="updatePreviewColors()">
-                  </div>
-              </div>
-            </div>
-    
-            <form id="invoiceForm">
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <label for="invoiceNumber" class="form-label">Invoice Number</label>
-                  <input type="text" class="form-control" id="invoiceNumber" data-field="invoice_number">
-                </div>
-                <div class="col-md-6">
-                  <label for="invoiceDate" class="form-label">Date</label>
-                  <input type="text" class="form-control" id="invoiceDate" data-field="invoice_date">
-                </div>
-              </div>
-              
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <label for="fromAddress" class="form-label">From (Supplier)</label>
-                  <textarea class="form-control" id="fromAddress" rows="3" data-field="from_address"></textarea>
-                </div>
-                <div class="col-md-6">
-                  <label for="toAddress" class="form-label">To (Customer)</label>
-                  <textarea class="form-control" id="toAddress" rows="3" data-field="to_address"></textarea>
-                </div>
-              </div>
-              
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <label for="supplierGst" class="form-label">Supplier GSTIN</label>
-                  <input type="text" class="form-control" id="supplierGst" data-field="gst_number">
-                </div>
-                <div class="col-md-6">
-                  <label for="customerGst" class="form-label">Customer GSTIN</label>
-                  <input type="text" class="form-control" id="customerGst" data-field="customer_gst">
-                </div>
-              </div>
-              
-              <h5 class="mt-4 mb-3">Items</h5>
-              <div class="table-responsive">
-                <table class="table table-bordered" id="itemsTable">
-                  <thead class="table-light">
-                    <tr>
-                      <th width="35%">Description</th>
-                      <th width="12%">Qty</th>
-                      <th width="12%">Rate</th>
-                      <th width="12%">Tax %</th>
-                      <th width="12%">Amount</th>
-                      <th width="5%"></th> <!-- remove button -->
-                    </tr>
-                  </thead>
-                  <tbody id="itemsTableBody"></tbody>
-                </table>
-              </div>
-              
-              <div class="row mt-2">
-                <div class="col-md-12">
-                  <button type="button" class="btn btn-sm btn-outline-primary" id="addItemBtn">
-                    <i class="bi bi-plus-circle"></i> Add Item
-                  </button>
-                </div>
-              </div>
-              
-              <div class="row mt-3">
-                <div class="col-md-6">
-                  <div class="mb-3">
-                    <label for="subtotal" class="form-label">Subtotal</label>
-                    <input type="text" class="form-control" id="subtotal" readonly>
-                  </div>
-                  <div class="mb-3">
-                    <label for="taxAmount" class="form-label">Tax Amount</label>
-                    <input type="text" class="form-control" id="taxAmount" readonly>
-                  </div>
-                </div>
-                <div class="col-md-6">
-                  <div class="mb-3">
-                    <label for="total" class="form-label">Total</label>
-                    <input type="text" class="form-control" id="total" data-field="total" readonly>
-                  </div>
-                  <div class="mb-3">
-                    <label for="totalQuantity" class="form-label">Total Quantity</label>
-                    <input type="text" class="form-control" id="totalQuantity" data-field="total_quantity">
-                  </div>
-                </div>
-              </div>
-              
-              <div class="mb-3">
-                <label for="taxDetails" class="form-label">Tax Details</label>
-                <textarea class="form-control" id="taxDetails" rows="2" data-field="taxes"></textarea>
-              </div>
-              
-              <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
-                <button type="button" class="btn btn-success me-md-2" id="saveBtn">
-                  <i class="bi bi-save"></i> Save Invoice
+              <div class="btn-group" style="display: inline-block;">
+                <button type="button" class="btn btn-success me-md-1" id="saveBtn">
+                  <i class="bi bi-save me-1"></i> Save Invoice
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      </div>
-
-      <!-- RIGHT: Invoice Preview -->
-      <div class="col-md-4">
-        <div class="card h-100">
-          <div class="card-header bg-primary text-white">
-            <h5 class="mb-0" style="display: inline-block;">Invoice Preview</h5>
-            <div class="btn-group" style="display: inline-block;">
-              <button type="button" class="btn btn-sm btn-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="fas fa-download me-1"></i> Download
-              </button>
-              <ul class="dropdown-menu dropdown-menu-end">
-                <li><button class="dropdown-item" id="downloadPdfBtn"><i class="fas fa-file-pdf me-2"></i>PDF</button></li>
-                <li><button class="dropdown-item" id="downloadImageBtn"><i class="fas fa-image me-2"></i>Image (PNG)</button></li>
-              </ul>
+              <div class="btn-group" style="display: inline-block;">
+                <button type="button" class="btn btn-sm btn-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                  <i class="fas fa-download me-1"></i> Download
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li><button class="dropdown-item" id="downloadPdfBtn"><i class="fas fa-file-pdf me-2"></i>PDF</button></li>
+                  <li><button class="dropdown-item" id="downloadImageBtn"><i class="fas fa-image me-2"></i>Image (PNG)</button></li>
+                </ul>
+              </div>
             </div>
-          </div>
-
-          
             <div class="card-body p-0">
-              <div id="invoice-preview-container" style="height: 100%; overflow: auto;">
-                <div class="invoice-paper" id="invoice-paper">
-                  <!-- Preview will be rendered here -->
+              <div id="invoice-preview-container" style="height: 100%; overflow: auto; background: #f5f5f5; display: flex; justify-content: center; align-items: center;">
+                <div id="invoice-paper" class="invoice-paper default-template">
+                  <!-- Template content will be rendered here -->
                 </div>
               </div>
             </div>
           </div>
         </div>
+      </div>
     </div>
   </div>
 
@@ -240,6 +534,20 @@
     </div>
   </div>
 
+  <!-- Footer -->
+  <footer class="main-footer">
+    <div class="footer-container">
+      <div class="footer-left">
+        <span>&copy; 2023 DocManage Pro. All rights reserved.</span>
+      </div>
+      <div class="footer-right">
+        <a href="#">Terms of Service</a>
+        <a href="#">Privacy Policy</a>
+        <a href="#">Contact Us</a>
+      </div>
+    </div>
+  </footer>
+
   <!-- External Scripts -->
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -248,378 +556,5 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <!-- Custom Script -->
-  <script src="/static/js/invoice_process.js"></script>
-  
-  <style>
-    /* Add these styles from your invoice editor template */
-  .invoice-paper {
-      font-family: Arial, sans-serif;
-      background: white;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      position: relative;
-      margin: 0 auto;
-      box-sizing: border-box;
-      overflow: hidden;
-      padding: 0.7in; /* Default padding */
-      page-break-inside: avoid; /* Prevent content splitting */
-      aspect-ratio: 1/1.414; /* Default A4 ratio */
-      display: flex;
-      flex-direction: column;
-  }
-    
-    .invoice-container {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-    }
-    
-    .header {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 30px;
-    }
-    
-    .company-info {
-      width: 50%;
-    }
-    
-    .invoice-title {
-      width: 50%;
-      text-align: right;
-    }
-    
-    .company-name {
-      font-weight: bold;
-      font-size: 14px;
-      margin-bottom: 5px;
-    }
-    
-    /* Ensure elements scale properly */
-    .company-name, .invoice-type {
-        font-size: 1.2em;
-    }
-
-    .address-label, .terms-label {
-        font-size: 1em;
-    }
-
-    .item-desc {
-        font-size: 0.8em;
-    }
-    .invoice-number {
-      font-weight: bold;
-      font-size: 14px;
-      margin-bottom: 5px;
-    }
-    
-    .invoice-type {
-      font-size: 24px;
-      font-weight: bold;
-      margin-bottom: 5px;
-    }
-    
-    .balance-due {
-      margin-top: 20px;
-    }
-    
-    .balance-label {
-      font-size: 10px;
-      font-weight: bold;
-    }
-    
-    .balance-amount {
-      font-size: 14px;
-      font-weight: bold;
-    }
-    
-    .address-section {
-      display: flex;
-      margin-bottom: 30px;
-    }
-    
-    .bill-to {
-      width: 60%;
-    }
-    
-    .invoice-details {
-      width: 40%;
-    }
-    
-    .address-label {
-      font-weight: bold;
-      margin-bottom: 5px;
-    }
-    
-    .customer-name {
-      font-weight: bold;
-    }
-    
-    .items-table {
-        width: 100%;
-        border-collapse: collapse;
-        table-layout: fixed;
-        margin: 15px 0;
-        font-size: 0.9em;
-    }
-    
-    .items-table th {
-      background-color: #333;
-      color: white;
-      text-align: left;
-    }
-    
-    .items-table td {
-      border-bottom: 1px solid #ddd;
-    }
-    
-    .items-table th, .items-table td {
-        padding: 8px;
-        word-wrap: break-word;
-        overflow-wrap: break-word;
-    }
-    .item-desc {
-      color: #666;
-      font-size: 10px;
-    }
-    
-    .totals-container {
-      display: flex;
-      margin-bottom: 20px;
-    }
-    
-    .notes-section {
-      width: 50%;
-    }
-    
-    .totals-section {
-      width: 50%;
-    }
-    
-    .totals-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    
-    .totals-table td {
-      padding: 5px 10px;
-    }
-    
-    .total-label {
-      text-align: right;
-      padding-right: 10px;
-    }
-    
-    .total-value {
-      text-align: right;
-      width: 100px;
-    }
-    
-    .balance-row {
-      background-color: #f5f5f5;
-    }
-    
-    .terms-section {
-      margin-bottom: 20px;
-    }
-    
-    .terms-label {
-      font-weight: bold;
-      margin-bottom: 5px;
-    }
-    
-    .signature-section {
-      margin-top: 50px;
-    }
-    
-    .signature-line {
-      width: 200px;
-      border-bottom: 1px solid #000;
-      margin-top: 30px;
-    }
-    
-    .footer {
-      margin-top: 50px;
-      border-top: 1px solid #ddd;
-      padding-top: 10px;
-      font-size: 10px;
-      color: #666;
-    }
-    
-    .text-right {
-      text-align: right;
-    }
-    
-    .text-center {
-      text-align: center;
-    }
-    
-    /* Make the preview container properly sized */
-    #invoice-preview-container {
-        background-color: #f5f5f5;
-        padding: 20px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        overflow: auto;
-        height: 100%;
-    }
-
-    /* Paper size specific styles */
-    .invoice-paper.a4 {
-        width: 8.27in;
-        min-height: 11.69in;
-        aspect-ratio: 1/1.414; /* A4 ratio */
-    }
-
-    .invoice-paper.letter {
-        width: 8.5in;
-        min-height: 11in;
-        aspect-ratio: 1/1.294; /* Letter ratio */
-    }
-
-    .invoice-paper.a5 {
-        width: 5.83in;
-        min-height: 8.27in;
-        aspect-ratio: 1/1.414; /* A5 ratio (same as A4 but smaller) */
-    }
-
-    /* Content container */
-    .invoice-content {
-        width: 100%;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-    }
-
-  .remove-item-btn {
-      color: #dc3545;
-      background: none;
-      border: none;
-      padding: 0;
-      font-size: 1.2rem;
-      cursor: pointer;
-      line-height: 1;
-      display: inline-block;
-      width: 100%;
-      height: 100%;
-  }
-
-    .remove-item-btn:hover {
-      color: #bb2d3b;
-      text-decoration: none;
-    }
-
-    /* Preview controls styling */
-    .preview-controls {
-      background: #f8f9fa;
-      padding: 15px;
-      border-radius: 5px;
-      margin-bottom: 15px;
-      border: 1px solid #dee2e6;
-    }
-
-    /* Color input styling */
-    input[type="color"].form-control {
-      height: 38px;
-      padding: 2px;
-      cursor: pointer;
-    }
-
-    .color-picker-group {
-      display: flex;
-      align-items: center;
-      margin-bottom: 10px;
-    }
-
-    .color-picker-label {
-      width: 120px;
-      margin-right: 10px;
-    }
-
-    /* Ensure text colors apply to all elements */
-    .invoice-paper,
-    .invoice-paper * {
-        transition: color 0.3s ease, background-color 0.3s ease;
-    }
-
-    .invoice-paper {
-      font-size: 12px; /* Base size */
-    }
-
-    .invoice-paper.a5 {
-        font-size: 10px; /* Smaller for A5 */
-    }
-    /* Header specific styles */
-    .items-table th {
-        transition: background-color 0.3s ease;
-    }
-
-  /* Accent color elements */
-  .balance-amount,
-  .total-value b,
-  .invoice-number {
-      transition: color 0.3s ease;
-  }
-
-  #extractedSection .card-body {
-    height: calc(100vh - 200px); /* Adjust based on your header height */
-    overflow-y: auto;
-    padding-right: 10px;
-  }
-
-  /* Remove any existing overflow styles that might conflict */
-  .container-fluid, .row {
-      overflow: visible !important;
-  }
-
-    #previewWrapper {
-        position: relative;
-        overflow: hidden;
-        width: 100%;
-        height: 50vh;
-        min-height: 300px;
-        max-height: 60vh;
-        border: 1px solid #ccc;
-        background-color: #f5f5f5;
-        touch-action: none; /* Prevent default touch behavior */
-    }
-
-    #previewImg, #pdfViewer {
-        position: absolute;
-        top: 0;
-        left: 0;
-        transform-origin: 0 0;
-        cursor: grab;
-        will-change: transform; /* Optimize for animation */
-        image-rendering: -webkit-optimize-contrast; /* Improve image quality */
-        image-rendering: crisp-edges;
-    }
-
-    #previewImg.grabbing, #pdfViewer.grabbing {
-        cursor: grabbing;
-    }
-
-    #previewImg {
-        max-width: none;
-        max-height: none;
-        display: none;
-    }
-
-    #pdfViewer {
-        display: none;
-    }
-    
-  /* During PDF generation only */
-  .html2canvas-container {
-      width: auto !important;
-      height: auto !important;
-      position: static !important;
-      overflow: visible !important;
-  }
-  </style>
-</body>
-
-</html>
+  <!-- <script src="/static/js/invoice_process.js"></script> -->
+   <script src="/static/js/test.js"></script>

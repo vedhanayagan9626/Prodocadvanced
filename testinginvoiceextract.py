@@ -1,17 +1,9 @@
 # -*- coding: utf-8 -*-
-# import pandas as pd
-# import json
 import pdfplumber
 import re
 from paddleocr import PaddleOCR
 import numpy as np
 from decimal import Decimal
-
-items = []
-tax_info = {}
-grand_total = {}
-current_item = None
-capture_description = False
 
 ocr = PaddleOCR(use_angle_cls=True, lang='en')
 
@@ -19,9 +11,6 @@ def clean_number(value):
     return value.replace(",", "") if isinstance(value, str) else value
 
 def safe_convert(value, to_type):
-    """
-    Safely convert value to specified type, handling common errors.
-    """
     try:
         if to_type == float:
             return float(clean_number(value))
@@ -35,7 +24,6 @@ def safe_convert(value, to_type):
         return None
 
 def is_address_line(line):
-    # Looks for presence of an Indian state or at least a pin code (6 digits)
     states = [
         "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
         "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka",
@@ -60,11 +48,42 @@ def extract_buyer_address(lines, buyer_name_idx):
             break
         if is_address_line(line):
             address_lines.append(line)
-    return " ".join(address_lines).strip() if address_lines else ""
+    return " ".join(address_lines).strip() if address_lines else "NOT FOUND"
+
+def extract_seller_info(lines):
+    seller_name, seller_gst, seller_address = "", "", ""
+    # Find company name and address block
+    for i, line in enumerate(lines[:10]):
+        if "Nucleus Analytics Private Limited" in line:
+            seller_name = "Nucleus Analytics Private Limited"
+            # Address block is usually next 2-4 lines
+            address_lines = []
+            for j in range(i+1, min(i+5, len(lines))):
+                if "GSTIN" in lines[j] or "TAX INVOICE" in lines[j]:
+                    break
+                address_lines.append(lines[j].strip())
+            seller_address = " ".join(address_lines)
+        if "GSTIN:" in line:
+            match = re.search(r"GSTIN:\s*([A-Z0-9]+)", line)
+            if match:
+                seller_gst = match.group(1)
+    # Fallbacks
+    if not seller_name:
+        for line in lines[:10]:
+            if "Nucleus" in line and "Private Limited" in line:
+                seller_name = line.strip()
+                break
+    if not seller_gst:
+        for line in lines[:15]:
+            match = re.search(r"GSTIN[:\s]*([A-Z0-9]{15})", line)
+            if match:
+                seller_gst = match.group(1)
+                break
+    return seller_name, seller_gst, seller_address
 
 def ocr_extract_metadata(image, patterns):
     result = ocr.ocr(np.array(image))
-    text_lines = [(line[1][0], line[1][1]) for block in result for line in block]  # (text, confidence)
+    text_lines = [(line[1][0], line[1][1]) for block in result for line in block]
     found = {}
     for field, pattern in patterns.items():
         for txt, conf in text_lines:
@@ -74,7 +93,7 @@ def ocr_extract_metadata(image, patterns):
                     "value": m.group(1) if m.groups() else txt,
                     "confidence": round(conf, 3)
                 }
-                break  # stop at first match
+                break
     return found
 
 fallback_patterns = {
@@ -116,6 +135,7 @@ def entry(text, path):
     current_item = None
     capture_description = False
 
+    # Default invoice_metadata in case there are no pages
     invoice_metadata = {
         "Invoice Number": "",
         "Invoice Date": "",
@@ -133,19 +153,21 @@ def entry(text, path):
             print(f"\n📄 Page {page_num + 1}")
             lines = page.extract_text(layout=True).split("\n")
 
+            # --- Seller Info Extraction ---
+            seller_name, seller_gst, seller_address = extract_seller_info(lines)
+
             invoice_metadata = {
                 "Invoice Number": "",
                 "Invoice Date": "",
                 "Buyer Name": "",
                 "Buyer Address": "",
                 "Buyer GSTIN": "",
-                "Seller Name": "Nucleus Analytics Private Limited",
-                "Seller Address": "Bengaluru - 560 062. INDIA",
-                "Seller GSTIN": "29AAECNOIGIEIZR",
+                "Seller Name": seller_name or "Nucleus Analytics Private Limited",
+                "Seller Address": seller_address or "Bengaluru - 560 062. INDIA",
+                "Seller GSTIN": seller_gst or "29AAECNOIGIEIZR",
                 "Subtotal (INR)": ""
             }
 
-            buyer_address_lines = []
             found_buyer_name = False
             buyer_name_idx = None
 
@@ -160,7 +182,16 @@ def entry(text, path):
                     date_match = re.search(r"Date[:\-]?\s*([0-9]{1,2}[\/\-\s]?[A-Za-z]{3,9}[\/\-\s]?[0-9]{2,4})", line)
                     if date_match:
                         invoice_metadata["Invoice Date"] = date_match.group(1).strip()
-                if "M/S" in line.upper():
+                if "Billing Address:" in line:
+                    # Buyer name is after "Billing Address:"
+                    match = re.search(r"Billing Address:\s*(.*)", line)
+                    if match:
+                        buyer_name = match.group(1).strip()
+                        if buyer_name:
+                            invoice_metadata["Buyer Name"] = buyer_name
+                            found_buyer_name = True
+                            buyer_name_idx = i
+                if not invoice_metadata["Buyer Name"] and "M/S" in line.upper():
                     parties = re.findall(r"M/S[.,]?\s*(.*?)(?:\s{2,}|$)", line, re.IGNORECASE)
                     for party in parties:
                         name = party.strip(" ,.")
@@ -174,8 +205,7 @@ def entry(text, path):
                         invoice_metadata["Buyer GSTIN"] = gstin_match.group(1)
                 if found_buyer_name and not invoice_metadata["Buyer Address"] and buyer_name_idx is not None:
                     buyer_address = extract_buyer_address(lines, buyer_name_idx)
-                    invoice_metadata["Buyer Address"] = buyer_address if buyer_address else " "
-                    invoice_metadata["Buyer Address"] = buyer_address if buyer_address else " "
+                    invoice_metadata["Buyer Address"] = buyer_address if buyer_address else "NOT FOUND"
 
                 if re.search(r"\bSub[\s\-]?Total[:\-]?", line, re.IGNORECASE):
                     sub_match = re.search(r"([\d,]+\.\d{2})", line)
@@ -187,13 +217,13 @@ def entry(text, path):
             missing_fields = [k for k, v in invoice_metadata.items() if not v and k in fallback_patterns]
             if missing_fields:
                 print(f"[INFO] Running OCR fallback for missing fields: {missing_fields}")
-                page_image = page.to_image(resolution=200).original  # try lower res for speed
+                page_image = page.to_image(resolution=200).original
                 ocr_results = ocr_extract_metadata(page_image, {k: fallback_patterns[k] for k in missing_fields})
                 for k, v in ocr_results.items():
                     invoice_metadata[k] = v["value"]
                     invoice_metadata[k + " Confidence"] = v["confidence"]
 
-            # --------- Item Extraction (no change) ----------
+            # --------- Item Extraction ----------
             i = 0
             while i < len(lines):
                 line = lines[i].strip()
@@ -244,7 +274,24 @@ def entry(text, path):
                 print("📥 Saving final item:", current_item["S.No"])
                 items.append(current_item)
                 current_item = None
-    return invoice_metadata,items,tax_info, grand_total
+    return invoice_metadata, items, tax_info, grand_total
+
+def remove_duplicate_phrases(address):
+    """Remove duplicate phrases/words from an address string, preserving order."""
+    # Split by comma and also by space for finer granularity
+    parts = []
+    for p in address.split(','):
+        for sub in p.strip().split():
+            if sub:
+                parts.append(sub)
+    seen = set()
+    result = []
+    for p in address.split(','):
+        phrase = p.strip()
+        if phrase and phrase.lower() not in seen:
+            seen.add(phrase.lower())
+            result.append(phrase)
+    return ', '.join(result)
 
 def extract_buyer_block(lines):
     """
@@ -259,7 +306,6 @@ def extract_buyer_block(lines):
     if start_idx is None:
         return "", "", ""
 
-    # Collect lines until a likely table header or unrelated info
     block = []
     buyer_name = ""
     buyer_gst = ""
@@ -281,8 +327,8 @@ def extract_buyer_block(lines):
         # Add to block if not duplicate and not empty
         if line.strip() and (not block or line.strip() != block[-1]):
             block.append(line.strip())
-    # Remove duplicates
-    block = list(dict.fromkeys(block))
+    # Remove duplicates and empty lines
+    block = [b for i, b in enumerate(block) if b and b.lower() not in [x.lower() for x in block[:i]]]
     # Remove header if present
     if block and re.search(r'Billing Address:|Delivery Address:', block[0], re.IGNORECASE):
         block = block[1:]
@@ -306,17 +352,16 @@ def process_invoice(text, path):
     seller_gst = invoice_details.get("Seller GSTIN", "29AAECNOIGIEIZR")
     seller_address = invoice_details.get("Seller Address", "Bengaluru - 560 062. INDIA")
     from_address = f"{seller_name}, GSTIN: {seller_gst}, {seller_address}"
+    from_address = remove_duplicate_phrases(from_address)
 
     # --- Buyer Info ---
     buyer_name, buyer_gst, buyer_address_block = extract_buyer_block(lines)
-    # Fallbacks if not found
     if not buyer_name:
         buyer_name = invoice_details.get("Buyer Name", "")
     if not buyer_gst:
         buyer_gst = invoice_details.get("Buyer GSTIN", "")
     if not buyer_address_block:
         buyer_address_block = invoice_details.get("Buyer Address", "")
-    # Compose to_address
     to_address = f"{buyer_name}, GSTIN: {buyer_gst}, {buyer_address_block}".strip(" ,")
     to_address = remove_duplicate_phrases(to_address)
 
@@ -341,6 +386,12 @@ def process_invoice(text, path):
         "from_address": from_address,
         "to_address": to_address,
         "gst_number": gst_number,
+        "seller_name": seller_name,
+        "seller_gst": seller_gst,
+        "seller_address": from_address,
+        "buyer_name": buyer_name,
+        "buyer_gst": gst_number,
+        "buyer_address": to_address,
         "total": Decimal(str(total)) if total is not None else Decimal("0.00"),
         "taxes": taxes,
         "total_quantity": Decimal(str(total_quantity)) if total_quantity else Decimal("0.00")
@@ -367,28 +418,17 @@ def process_invoice(text, path):
         "items": items
     }
 
-def remove_duplicate_phrases(address):
-    """Remove duplicate phrases/words from an address string, preserving order."""
-    seen = set()
-    result = []
-    # Split by comma, then by space for finer granularity
-    for part in address.split(','):
-        phrase = part.strip()
-        if phrase and phrase.lower() not in seen:
-            seen.add(phrase.lower())
-            result.append(phrase)
-    return ', '.join(result)
 
-# if __name__ == '__main__':
-#     pdf_path = 'invoice5_dup1_processed.pdf'
+if __name__ == '__main__':
+    pdf_path = 'invoice5_dup1_processed.pdf'
     
-#     try:
-#         processed_data = process_invoice("", pdf_path)
-#         import json
-#         print(json.dumps(processed_data, indent=4, default=str))
+    try:
+        processed_data = process_invoice("", pdf_path)
+        import json
+        print(json.dumps(processed_data, indent=4, default=str))
 
-#     except FileNotFoundError:
-#         print(f"Error: The file '{pdf_path}' was not found.")
-#         print("Please make sure the PDF file is in the same directory as the script.")
-#     except Exception as e:
-#         print(f"An error occurred: {e}")
+    except FileNotFoundError:
+        print(f"Error: The file '{pdf_path}' was not found.")
+        print("Please make sure the PDF file is in the same directory as the script.")
+    except Exception as e:
+        print(f"An error occurred: {e}")

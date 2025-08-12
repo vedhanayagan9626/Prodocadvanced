@@ -16,6 +16,9 @@ from core.pdf_reader import extract_text, convert_pdf_to_images, ocr_image
 import importlib
 from datetime import datetime
 import decimal, json
+from decimal import Decimal, InvalidOperation
+from dateutil import parser
+import logger
 # from main import app
 # import vendor_parsers.ocr_parser.surekha_goldocr as surekha_goldocr
 # import vendor_parsers.plumber_parser.satruntech_pdf as satruntech_pdf
@@ -33,44 +36,65 @@ def get_db():
     finally:
         db.close()
 
-@router.get("/invoices/{invoice_no}/corrections/latest")
+def parse_date(date_str):
+    try:
+        # Fix common typos
+        date_str = date_str.replace('Nowember', 'November')
+        return parser.parse(date_str).strftime('%Y-%m-%d')
+    except:
+        return datetime.now().strftime('%Y-%m-%d')
+
+def safe_decimal(value, default='0'):
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        return Decimal(default)
+    
+#  Query parameter version (recommended)
+
+@router.get("/invoices/corrections/latest")
 def get_latest_correction(
-    invoice_no: str, 
+    invoice_number: str = Query(..., description="The invoice number"),
     db: Session = Depends(get_db)
 ):
-    print(f"Attempting to fetch corrections for {invoice_no}") 
-    correction = db.query(CorrectedInvoices)\
-        .filter(CorrectedInvoices.OriginalInvoiceNo == invoice_no)\
-        .order_by(CorrectedInvoices.CorrectionDate.desc())\
-        .first()
-    
-    if not correction:
-        raise HTTPException(status_code=404, detail="No corrections found")
-    
-    # Convert SQLAlchemy model to dictionary
-    correction_dict = {
-        "CorrectionID": correction.CorrectionID,
-        "OriginalInvoiceNo": correction.OriginalInvoiceNo,
-        "FromAddress": correction.FromAddress,
-        "ToAddress": correction.ToAddress,
-        "SupplierGST": correction.SupplierGST,
-        "CustomerGST": correction.CustomerGST,
-        "InvoiceDate": str(correction.InvoiceDate) if correction.InvoiceDate else None,
-        "Total": float(correction.Total) if correction.Total is not None else 0.0,
-        "Subtotal": float(correction.Subtotal) if correction.Subtotal is not None else 0.0,
-        "TaxAmount": float(correction.TaxAmount) if correction.TaxAmount is not None else 0.0,
-        "Taxes": correction.Taxes,
-        "TotalQuantity": float(correction.TotalQuantity) if correction.TotalQuantity is not None else 0.0,
-        "CorrectionDate": str(correction.CorrectionDate) if correction.CorrectionDate else None,
-        "CorrectedBy": correction.CorrectedBy,
-        "Status": correction.Status,
-        "Notes": correction.Notes,
-        "TemplateStyle": json.loads(correction.TemplateStyle) if isinstance(correction.TemplateStyle, str) and correction.TemplateStyle else (correction.TemplateStyle if correction.TemplateStyle else {})
-    }
-    
-    return JSONResponse(content=correction_dict)
+    try:
+        print(f"Received invoice number: '{invoice_number}'")
+        
+        correction = db.query(CorrectedInvoices)\
+            .filter(CorrectedInvoices.OriginalInvoiceNo == invoice_number)\
+            .order_by(CorrectedInvoices.CorrectionDate.desc())\
+            .first()
 
-
+        if not correction:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No corrections found for invoice: {invoice_number}"
+            )
+                # Convert SQLAlchemy model to dictionary
+        correction_dict = {
+            "CorrectionID": correction.CorrectionID,
+            "OriginalInvoiceNo": correction.OriginalInvoiceNo,
+            "FromAddress": correction.FromAddress,
+            "ToAddress": correction.ToAddress,
+            "SupplierGST": correction.SupplierGST,
+            "CustomerGST": correction.CustomerGST,
+            "InvoiceDate": str(correction.InvoiceDate) if correction.InvoiceDate else None,
+            "Total": float(correction.Total) if correction.Total is not None else 0.0,
+            "Subtotal": float(correction.Subtotal) if correction.Subtotal is not None else 0.0,
+            "TaxAmount": float(correction.TaxAmount) if correction.TaxAmount is not None else 0.0,
+            "Taxes": correction.Taxes,
+            "TotalQuantity": float(correction.TotalQuantity) if correction.TotalQuantity is not None else 0.0,
+            "CorrectionDate": str(correction.CorrectionDate) if correction.CorrectionDate else None,
+            "CorrectedBy": correction.CorrectedBy,
+            "Status": correction.Status,
+            "Notes": correction.Notes,
+            "TemplateStyle": json.loads(correction.TemplateStyle) if isinstance(correction.TemplateStyle, str) and correction.TemplateStyle else (correction.TemplateStyle if correction.TemplateStyle else {})
+        }
+        
+        return JSONResponse(content=correction_dict)
+    except Exception as e:
+        print(f"Error processing request: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 def load_vendor_parser(vendor_name, mode):
     """
     Dynamically import vendor parser based on name and mode (ocr or plumber).
@@ -136,39 +160,71 @@ def process_with_pdfplumber(path, mode):
 
     return vendor_module.process_invoice(text,path)
 
+import os
+import ocrmypdf
+
 def process_with_ocr(path, mode):
-    # Accept both image and PDF
+    filepath = path
+    fmode = "plumber" if mode.lower() == "ocr" else "plumber"  # Seems redundant, but assuming future logic
+
     if path.lower().endswith(".pdf"):
-        images = convert_pdf_to_images(path)
-        if images:
-            print(f"[INFO] Converted PDF to {len(images)} images for OCR processing.")
-            text = "\n".join([ocr_image(img) for img in images])
-        else:
-            raise ValueError("[ERROR] No images extracted from PDF for OCR processing.")
+        return process_with_pdfplumber(filepath, fmode)
+
     elif path.lower().endswith((".jpg", ".jpeg", ".png")):
-        print("[INFO] Proccessing in OCR on given image .")
-        text = ocr_image(path)
+        # Convert image to temporary PDF first
+        # from PIL import Image
+        # image = Image.open(path)
+        # temp_pdf_path = path.rsplit('.', 1)[0] + '_temp.pdf'
+        # image.convert('RGB').save(temp_pdf_path)
+
+        # Output OCR'd PDF path
+        output_pdf_path = path.rsplit('.', 1)[0] + '_textpdf.pdf'
+
+        # Only run OCR if OCR'd version doesn't exist
+        if not os.path.exists(output_pdf_path):
+            ocrmypdf.ocr(path, output_pdf_path, deskew=True, image_dpi=300)
+
+        # Clean up temp PDF if needed
+        # if os.path.exists(temp_pdf_path):
+        #     os.remove(temp_pdf_path)
+
+        return process_with_pdfplumber(output_pdf_path, fmode)
+
     else:
         raise ValueError("[ERROR] Unsupported file type for OCR processing.")
 
-    print("[INFO] Extracted text using OCR:\n")
-    print(text[:])
+    # Accept both image and PDF
+    # if path.lower().endswith(".pdf"):
+    #     images = convert_pdf_to_images(path)
+    #     if images:
+    #         print(f"[INFO] Converted PDF to {len(images)} images for OCR processing.")
+    #         text = "\n".join([ocr_image(img) for img in images])
+    #     else:
+    #         raise ValueError("[ERROR] No images extracted from PDF for OCR processing.")
+    # elif path.lower().endswith((".jpg", ".jpeg", ".png")):
+    #     print("[INFO] Proccessing in OCR on given image .")
+    #     text = ocr_image(path)
+    # else:
+    #     raise ValueError("[ERROR] Unsupported file type for OCR processing.")
 
-    templates = template_loader.load_templates()
-    matched_template = template_loader.detect_template(text, templates)
+    # print("[INFO] Extracted text using OCR:\n")
+    # print(text[:])
 
-    if not matched_template:
-        raise ValueError(f"[ERROR] No matching template found for OCR content.")
+    # templates = template_loader.load_templates()
+    # matched_template = template_loader.detect_template(text, templates)
+
+    # if not matched_template:
+    #     raise ValueError(f"[ERROR] No matching template found for OCR content.")
     
-    vendor = matched_template["vendor"]
-    print(f"[INFO] Detected vendor: {vendor}")
+    # vendor = matched_template["vendor"]
+    # print(f"[INFO] Detected vendor: {vendor}")
 
-    vendor_module = load_vendor_parser(vendor, mode)
+    # vendor_module = load_vendor_parser(vendor, mode)
 
-    if not vendor_module:
-        raise ValueError(f"[ERROR] No parser found for vendor '{vendor}' in ocr mode.")
+    # if not vendor_module:
+    #     raise ValueError(f"[ERROR] No parser found for vendor '{vendor}' in ocr mode.")
     
-    return vendor_module.process_invoice(text,matched_template,path)
+    # return vendor_module.process_invoice(text,matched_template,path)
 
 @router.post('/upload-doc')
 async def upload_doc(file: UploadFile = File(...)):
@@ -478,9 +534,38 @@ def save_corrected_invoice(
     db: Session = Depends(get_db)
 ):
     try:
-        invoice_no = correction_data['invoice_data']['invoice_number']
-        # Extract styling preferences (should already be a dict from the request)
+        # Validate required fields
+        if not correction_data.get('invoice_data') or not correction_data.get('items'):
+            raise HTTPException(status_code=400, detail="Missing required data")
+            
+        invoice_data = correction_data['invoice_data']
+        items = correction_data['items']
         styling = correction_data.get('styling', {})
+        
+        # Validate invoice number
+        invoice_no = invoice_data.get('invoice_number')
+        if not invoice_no:
+            raise HTTPException(status_code=400, detail="Invoice number is required")
+        
+        # Parse dates safely
+        invoice_date = parse_date(invoice_data.get('invoice_date', ''))
+        
+        # Convert all decimal values safely
+        total = safe_decimal(invoice_data.get('total', '0'))
+        subtotal = safe_decimal(invoice_data.get('subtotal', '0'))
+        tax_amount = safe_decimal(invoice_data.get('tax_amount', '0'))
+        total_quantity = safe_decimal(invoice_data.get('total_quantity', '0'))
+        
+        # --- DUPLICATE CHECK: Prevent duplicate APPROVED corrections ---
+        existing_approved = db.query(CorrectedInvoices).filter(
+            CorrectedInvoices.OriginalInvoiceNo == invoice_no,
+            CorrectedInvoices.Status == 'APPROVED'
+        ).first()
+        if existing_approved:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Correction for invoice {invoice_no} with status APPROVED already exists."
+            )
         
         # Check for existing pending correction
         existing_pending = db.query(CorrectedInvoices).filter(
@@ -490,18 +575,18 @@ def save_corrected_invoice(
         
         if existing_pending:
             # Update existing correction
-            existing_pending.FromAddress = correction_data['invoice_data']['from_address']
-            existing_pending.ToAddress = correction_data['invoice_data']['to_address']
-            existing_pending.SupplierGST = correction_data['invoice_data']['gst_number']
-            existing_pending.CustomerGST = correction_data['invoice_data'].get('customer_gst')
-            existing_pending.InvoiceDate = correction_data['invoice_data']['invoice_date']
-            existing_pending.Total = decimal.Decimal(correction_data['invoice_data']['total'])
-            existing_pending.Subtotal = decimal.Decimal(correction_data['invoice_data']['subtotal'])
-            existing_pending.TaxAmount = decimal.Decimal(correction_data['invoice_data']['tax_amount'])
-            existing_pending.Taxes = correction_data['invoice_data']['taxes']
-            existing_pending.TotalQuantity = decimal.Decimal(correction_data['invoice_data']['total_quantity'])
+            existing_pending.FromAddress = invoice_data.get('from_address', '')
+            existing_pending.ToAddress = invoice_data.get('to_address', '')
+            existing_pending.SupplierGST = invoice_data.get('gst_number', '')
+            existing_pending.CustomerGST = invoice_data.get('customer_gst', '')
+            existing_pending.InvoiceDate = invoice_date
+            existing_pending.Total = total
+            existing_pending.Subtotal = subtotal
+            existing_pending.TaxAmount = tax_amount
+            existing_pending.Taxes = invoice_data.get('taxes', '')
+            existing_pending.TotalQuantity = total_quantity
             existing_pending.TemplateStyle = styling
-            existing_pending.CorrectedBy = "current_user@example.com"  # Replace with auth user
+            existing_pending.CorrectedBy = "current_user@example.com"
             correction_id = existing_pending.CorrectionID
             
             # Delete existing items
@@ -512,16 +597,16 @@ def save_corrected_invoice(
             # Create new correction
             corrected_invoice = CorrectedInvoices(
                 OriginalInvoiceNo=invoice_no,
-                FromAddress=correction_data['invoice_data']['from_address'],
-                ToAddress=correction_data['invoice_data']['to_address'],
-                SupplierGST=correction_data['invoice_data']['gst_number'],
-                CustomerGST=correction_data['invoice_data'].get('customer_gst'),
-                InvoiceDate=correction_data['invoice_data']['invoice_date'],
-                Total=decimal.Decimal(correction_data['invoice_data']['total']),
-                Subtotal=decimal.Decimal(correction_data['invoice_data']['subtotal']),
-                TaxAmount=decimal.Decimal(correction_data['invoice_data']['tax_amount']),
-                Taxes=correction_data['invoice_data']['taxes'],
-                TotalQuantity=decimal.Decimal(correction_data['invoice_data']['total_quantity']),
+                FromAddress=invoice_data.get('from_address', ''),
+                ToAddress=invoice_data.get('to_address', ''),
+                SupplierGST=invoice_data.get('gst_number', ''),
+                CustomerGST=invoice_data.get('customer_gst', ''),
+                InvoiceDate=invoice_date,
+                Total=total,
+                Subtotal=subtotal,
+                TaxAmount=tax_amount,
+                Taxes=invoice_data.get('taxes', ''),
+                TotalQuantity=total_quantity,
                 TemplateStyle=styling,
                 CorrectedBy="current_user@example.com",
                 Status="APPROVED"
@@ -530,61 +615,63 @@ def save_corrected_invoice(
             db.flush()
             correction_id = corrected_invoice.CorrectionID
         
-        # Save corrected items
-        for item in correction_data['items']:
+        # Save corrected items with validation
+        for item in items:
             corrected_item = CorrectedItems(
                 CorrectionID=correction_id,
                 OriginalItemID=item.get('original_item_id'),
-                Description=item['description'],
-                Quantity=decimal.Decimal(item['quantity']),
-                Rate=decimal.Decimal(item['price_per_unit']),
-                Tax=decimal.Decimal(item['gst']),
-                Amount=decimal.Decimal(item['amount']),
-                HSN=item.get('hsn')
+                Description=item.get('description', ''),
+                Quantity=safe_decimal(item.get('quantity', '0')),
+                Rate=safe_decimal(item.get('price_per_unit', '0')),
+                Tax=safe_decimal(item.get('gst', '0')),
+                Amount=safe_decimal(item.get('amount', '0')),
+                HSN=item.get('hsn', '')
             )
             db.add(corrected_item)
         
         db.commit()
-        return {"status": "success", "correction_id": correction_id}
+        return {
+            "status": "success", 
+            "correction_id": correction_id,
+            "message": "Invoice correction saved successfully"
+        }
     
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        import logging
+        logging.getLogger(__name__).error("Error saving correction: %s", str(e), exc_info=True)
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to save invoice correction: {str(e)}"
+        )
 
 
 
 
-
-@router.delete("/invoices/{invoice_no}/delete")
+@router.delete("/invoices/corrections/delete")
 def delete_invoice_api(
-    invoice_no: str = Path(..., description="Invoice number to delete"),
+    invoice_number: str = Query(..., description="Invoice number to delete"),
     db: Session = Depends(get_db)
 ):
     try:
-        # First find the correction record(s) for this invoice
+        print("Deleting invoice correction for:", invoice_number)
         corrections = db.query(CorrectedInvoices).filter(
-            CorrectedInvoices.OriginalInvoiceNo == invoice_no
+            CorrectedInvoices.OriginalInvoiceNo == invoice_number
         ).all()
-        
         if not corrections:
             raise HTTPException(status_code=404, detail="Invoice not found")
-            
-        # Delete all corrected items for each correction record
         for correction in corrections:
             db.query(CorrectedItems).filter(
                 CorrectedItems.CorrectionID == correction.CorrectionID
             ).delete()
-            
-        # Delete all correction records for this invoice
         db.query(CorrectedInvoices).filter(
-            CorrectedInvoices.OriginalInvoiceNo == invoice_no
+            CorrectedInvoices.OriginalInvoiceNo == invoice_number
         ).delete()
-        
         db.commit()
-            
-        return {"status": "success", "message": f"Invoice {invoice_no} deleted"}
-        
+        return {"status": "success", "message": f"Invoice {invoice_number} deleted"}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
-    
+

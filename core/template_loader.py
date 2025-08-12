@@ -21,11 +21,23 @@ def detect_template(text, templates):
     for tpl in templates:
         # All keywords must match (using regex)
         all_match = True
-        for keyword in tpl['keywords']:
-            pattern = keyword_to_regex(keyword.lower())
-            if not re.search(pattern, text_lower, re.IGNORECASE):
-                all_match = False
-                break
-        if all_match:
-            return tpl
+        if tpl.get('vendor')== 'Satrun Technologies':
+            # Special case for Satrun Technologies
+            match_count = 0
+
+            for keyword in tpl['keywords']:
+                pattern = keyword_to_regex(keyword.lower())
+                if re.search(pattern, text_lower, re.IGNORECASE):
+                    match_count += 1
+                    if match_count >= 2:
+                        return tpl
+
+        else:
+            for keyword in tpl['keywords']:
+                pattern = keyword_to_regex(keyword.lower())
+                if not re.search(pattern, text_lower, re.IGNORECASE):
+                    all_match = False
+                    break
+            if all_match:
+                return tpl
     return None
