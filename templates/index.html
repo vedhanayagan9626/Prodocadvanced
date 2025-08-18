@@ -14,7 +14,15 @@
   <!-- FontAwesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
-  <style>
+<style>
+    :root {
+      --text-color: #333;
+      --text-secondary: #6c757d;
+      --primary-color: #0db561;
+      --primary-dark: #0a8e4e;
+      --border-color: #dee2e6;
+    }
+    
     body {
       font-family: 'Roboto', Arial, sans-serif;
       margin: 0;
@@ -24,6 +32,7 @@
       display: flex;
       flex-direction: column;
       min-height: 100vh;
+      font-size: 0.875rem; /* Reduced base font size */
     }
     
     .main-header {
@@ -31,9 +40,9 @@
       top: 0;
       left: 0;
       right: 0;
-      height: 60px;
+      height: 48px; /* Reduced from 60px */
       background: #fff;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08); /* Lighter shadow */
       z-index: 1000;
       display: flex;
       align-items: center;
@@ -42,7 +51,7 @@
     .header-container {
       font-family: 'Segoe UI', sans-serif;
       width: 100%;
-      padding: 0 30px;
+      padding: 0 24px; /* Reduced from 30px */
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -51,29 +60,29 @@
     .header-left {
       display: flex;
       align-items: center;
-      gap: 12px;
-      min-width: 200px;
+      gap: 10px; /* Reduced from 12px */
+      min-width: 160px; /* Reduced from 200px */
     }
 
     .company-logo {
-      height: 36px;
+      height: 30px; /* Reduced from 36px */
       width: auto;
     }
 
     .company-name {
       font-weight: 700;
-      font-size: 18px;
+      font-size: 0.9375rem; /* ~15px */
       color: var(--primary-dark);
     }
 
     .header-center {
       flex: 1;
       text-align: center;
-      padding: 0 20px;
+      padding: 0 16px; /* Reduced from 20px */
     }
 
     .page-title {
-      font-size: 18px;
+      font-size: 0.9375rem; /* ~15px */
       font-weight: 600;
       color: var(--text-color);
       margin: 0;
@@ -85,15 +94,15 @@
     .header-right {
       display: flex;
       align-items: center;
-      gap: 20px;
-      min-width: 200px;
+      gap: 16px; /* Reduced from 20px */
+      min-width: 160px; /* Reduced from 200px */
       justify-content: flex-end;
     }
 
     .org-name {
       font-weight: 500;
       color: var(--text-secondary);
-      font-size: 14px;
+      font-size: 0.8125rem; /* ~13px */
     }
 
     .user-btn {
@@ -102,8 +111,8 @@
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 5px 10px;
+      gap: 6px; /* Reduced from 8px */
+      padding: 4px 8px; /* Reduced from 5px 10px */
       border-radius: 20px;
       transition: background 0.2s;
     }
@@ -113,8 +122,8 @@
     }
 
     .user-avatar {
-      width: 32px;
-      height: 32px;
+      width: 28px; /* Reduced from 32px */
+      height: 28px;
       border-radius: 50%;
       object-fit: cover;
     }
@@ -129,11 +138,11 @@
       position: absolute;
       right: 0;
       background-color: #fff;
-      min-width: 220px;
-      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-      border-radius: 8px;
+      min-width: 180px; /* Reduced from 220px */
+      box-shadow: 0 6px 12px rgba(0,0,0,0.08); /* Lighter shadow */
+      border-radius: 6px; /* Reduced from 8px */
       z-index: 1;
-      padding: 10px 0;
+      padding: 8px 0; /* Reduced from 10px */
     }
 
     .user-dropdown:hover .dropdown-content {
@@ -142,10 +151,10 @@
 
     .dropdown-content a {
       color: var(--text-color);
-      padding: 10px 16px;
+      padding: 8px 14px; /* Reduced from 10px 16px */
       text-decoration: none;
       display: block;
-      font-size: 14px;
+      font-size: 0.8125rem; /* ~13px */
       transition: background 0.2s;
     }
 
@@ -154,26 +163,26 @@
     }
 
     .dropdown-content a i {
-      width: 20px;
+      width: 18px; /* Reduced from 20px */
       text-align: center;
-      margin-right: 8px;
+      margin-right: 6px; /* Reduced from 8px */
       color: var(--text-secondary);
     }
 
     .user-info {
       display: flex;
       align-items: center;
-      padding: 10px 16px;
-      margin-bottom: 5px;
+      padding: 8px 14px; /* Reduced from 10px 16px */
+      margin-bottom: 4px; /* Reduced from 5px */
       border-bottom: 1px solid #eee;
     }
 
     .dropdown-avatar {
-      width: 40px;
-      height: 40px;
+      width: 36px; /* Reduced from 40px */
+      height: 36px;
       border-radius: 50%;
       object-fit: cover;
-      margin-right: 10px;
+      margin-right: 8px; /* Reduced from 10px */
     }
 
     .user-info div {
@@ -182,11 +191,11 @@
     }
 
     .user-info strong {
-      font-size: 14px;
+      font-size: 0.8125rem; /* ~13px */
     }
 
     .user-info small {
-      font-size: 12px;
+      font-size: 0.75rem; /* ~12px */
       color: var(--text-secondary);
     }
     
@@ -195,79 +204,305 @@
       display: flex;
       position: relative;
       flex-direction: column;
-      margin-top: 10px;
-      margin-bottom: 10px;
+      margin: 8px 0; /* Reduced from 10px */
       overflow: hidden;
-      transform: scale(0.8);
-      transform-origin: top center;
-      width: 125%;
-      margin-left: -12.5%;
-      height: calc(100vh - 100px);
+      height: calc(100vh - 88px); /* Adjusted for reduced header/footer */
     }
     
     .container-fluid.main-content {
       flex: 1;
-      padding: 15px;
-      overflow-y: auto;
+      padding: 12px; /* Reduced from 15px */
+      overflow-y: hidden;
+      display: flex;
+    }
+    
+    .row {
+      display: flex;
+      flex: 1;
+      width: 100%;
+      margin: 0;
     }
     
     .col-md-4 {
-      width: 30%;
-      margin: 0 1.66%;
-    }
-    
-    .close-btn-container {
-      position: absolute;
-      top: 20px;
-      right: 14px;
-      z-index: 1001;
-    }
-    
-    .main-footer {
-      position: sticky;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 40px;
-      background: #fff;
-      border-top: 1px solid var(--border-color);
+      flex: 1;
+      min-width: 0;
+      padding: 0 8px; /* Reduced from 10px */
       display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    
+    /* File Upload Section */
+    #uploadForm {
+      margin-bottom: 12px; /* Reduced from 15px */
+    }
+
+    #previewWrapper {
+      position: relative;
+      overflow: hidden;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
       align-items: center;
-      z-index: 1000;
+      background-color: #f9f9f9;
+    }
+
+    #previewImg, #pdfViewer {
+      user-select: none;
+      -webkit-user-drag: none;
+      max-width: none;
+      max-height: none;
+      touch-action: none; /* Prevent default touch gestures to improve pan/zoom */
+    }
+
+    #previewImg {
+      max-height: 100%;
+      max-width: 100%;
+      height: auto;
+      width: auto;
+      object-fit: contain;
+      display: block;
+    }
+
+
+    /* Invoice editor item table */
+    #itemsTable {
+        width: 100% !important;
+        table-layout: fixed;
+        font-size: 0.8125rem; /* ~13px */
+    }
+    
+    #itemsTable th, #itemsTable td {
+        padding: 6px; /* Reduced from 8px */
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    #itemsTable th:nth-child(1), #itemsTable td:nth-child(1) { width: 35%; }
+    #itemsTable th:nth-child(2), #itemsTable td:nth-child(2) { width: 12%; }
+    #itemsTable th:nth-child(3), #itemsTable td:nth-child(3) { width: 12%; }
+    #itemsTable th:nth-child(4), #itemsTable td:nth-child(4) { width: 12%; }
+    #itemsTable th:nth-child(5), #itemsTable td:nth-child(5) { width: 12%; }
+    #itemsTable th:nth-child(6), #itemsTable td:nth-child(6) { width: 5%; }
+    
+    #itemsTable input {
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+        font-size: 0.8125rem; /* ~13px */
+        padding: 4px 6px; /* Reduced padding */
+    }
+
+    /* Invoice preview display */
+    #invoice-preview-container {
+        overflow: hidden;
+        position: relative;
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+        user-select: none;
+        background: #f0f0f0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    #invoice-scale-wrapper {
+        transform-origin: top center;
+        cursor: grab;
+        transition: transform 0.1s ease-out;
+        will-change: transform;
+    }
+
+    #invoice-scale-wrapper .invoice-paper-temp {
+        width: 210mm;
+        min-height: 297mm;
+        background: white;
+        box-shadow: 0 0 8px rgba(0,0,0,0.08); /* Lighter shadow */
+    }
+    #invoice-scale-wrapper:active {
+      cursor: grabbing;
+    }
+    
+    /* Card headers */
+    .card-header {
+      padding: 0.75rem 1rem; /* Reduced from default */
+    }
+    
+    .card-header h5 {
+      font-size: 0.9375rem; /* ~15px */
+      margin-bottom: 0;
+    }
+    
+    /* Form elements */
+    .form-label {
+      font-size: 0.8125rem; /* ~13px */
+      margin-bottom: 0.25rem; /* Reduced */
+    }
+    
+    .form-control, .form-select {
+      font-size: 0.8125rem; /* ~13px */
+      padding: 0.375rem 0.75rem; /* Slightly reduced */
+    }
+    
+    textarea.form-control {
+      min-height: calc(1.5em + 1.75rem); /* Adjusted */
+    }
+    
+    /* Buttons */
+    .btn {
+      font-size: 0.8125rem; /* ~13px */
+      padding: 0.375rem 0.75rem; /* Standard reduced size */
+    }
+    
+    .btn-sm {
+      padding: 0.25rem 0.5rem; /* Reduced */
+      font-size: 0.75rem; /* ~12px */
+    }
+    
+    /* Close button */
+    .close-btn-container {
+      top: 16px; /* Reduced from 20px */
+      right: 12px; /* Reduced from 14px */
+    }
+    
+    .close-btn-container .btn {
+      width: 30px; /* Reduced from 36px */
+      height: 30px;
+    }
+    
+    /* Footer */
+    .main-footer {
+      height: 36px; /* Reduced from 40px */
+      display: block;
     }
 
     .footer-container {
-      width: 100%;
-      padding: 0 30px;
+      padding: 0 24px; /* Reduced from 30px */
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
 
-    .footer-left span {
-      font-size: 12px;
-      color: var(--text-secondary);
+    .footer-left span, .footer-right a {
+      font-size: 0.75rem; /* ~12px */
     }
 
     .footer-right {
+      gap: 12px; /* Reduced from 15px */
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 1200px) {
+        .content-wrapper {
+            transform: none;
+            width: 100%;
+            margin-left: 0;
+        }
+        
+        .col-md-4 {
+            min-width: 30%;
+        }
+    }
+    
+    @media (max-width: 992px) {
+        .content-wrapper {
+            height: auto;
+            min-height: calc(100vh - 88px); /* Adjusted */
+        }
+        
+        .row {
+            flex-wrap: wrap;
+        }
+        
+        .col-md-4 {
+            flex: 0 0 100%;
+            margin-bottom: 16px; /* Reduced from 20px */
+        }
+        
+        #previewWrapper {
+            max-height: 320px; /* Reduced from 400px */
+        }
+    }
+    
+    /* Invoice Editor Section */
+    #extractedSection {
       display: flex;
-      gap: 15px;
+      flex-direction: column;
     }
-
-    .footer-right a {
-      font-size: 12px;
-      color: var(--text-secondary);
-      text-decoration: none;
-      transition: color 0.2s;
+    
+    #extractedSection .card {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
     }
-
-    .footer-right a:hover {
-      color: var(--primary-color);
+    
+    #extractedSection .card-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px; /* Reduced from 15px */
     }
-  </style>
+    
+    /* Alerts */
+    .alert {
+      padding: 0.75rem; /* Reduced from default */
+      font-size: 0.8125rem; /* ~13px */
+      margin-top: 0.75rem; /* Reduced from 1rem */
+    }
+    
+    /* Spinner */
+    .spinner-border {
+      width: 2.5rem !important; /* Reduced from 3rem */
+      height: 2.5rem !important;
+    }
+    
+    /* Toast */
+    .toast {
+      font-size: 0.8125rem; /* ~13px */
+    }
+</style>
 </head>
 
 <body class="bg-light">
+              <div id="InvoiceeditorNavglobalSpinnerOverlay" style="
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(255, 255, 255, 0.85);
+                z-index: 9999;
+                display: none; /* HIDDEN by default */
+                justify-content: center;
+                align-items: center;
+                backdrop-filter: blur(2px);
+            ">
+                <div class="spinner-container" style="position: relative;">
+                    <!-- Ripple Effect (Optional) -->
+                    <div class="icon-ripple" style="
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        width: 80px;
+                        height: 80px;
+                        border-radius: 50%;
+                        background: rgba(10, 142, 78, 0.3);
+                        animation: ripple 1.5s infinite ease-out;
+                    "></div>
+                    
+                    <!-- Your Custom PNG Icon -->
+                    <img src="static/logos/invoice1.png" alt="Loading" style="
+                        width: 48px;
+                        height: 48px;
+                        color:  #0a8e4e;
+                        animation: spin 1.5s infinite linear, pulse 1.5s infinite ease-in-out;
+                    ">
+                </div>
+            </div>
+
   <!-- Header -->
   <header class="main-header">
     <div class="header-container">
@@ -306,9 +541,9 @@
 
   <!-- Main Content Wrapper -->
   <div class="content-wrapper">
-    <div class="close-btn-container">
+    <div class="close-btn-container" style="position: absolute; top: 10px; right: 10px; z-index: 999;">
       <button class="btn btn-sm btn-light rounded-circle" onclick="window.location.href='/'" 
-              style="width: 36px; height: 36px;background-color: tomato;">
+              style="width: 36px; height: 36px; background-color: tomato;">
         <i class="bi bi-x-lg"></i>
       </button>
     </div>
@@ -336,11 +571,11 @@
             <button type="submit" class="btn btn-primary" style="background-color: #0db561; border-color: #0db561;">Process & Extract</button>
           </form>
           
-          <div id="previewWrapper" style="overflow:hidden; width:100%; height:100%;">
-            <img id="previewImg" style="max-width:none; max-height:none; display:none;" />
-            <canvas id="pdfViewer" style="display:none;"></canvas>
+          <div id="previewWrapper" style="position: relative; overflow: hidden; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; background: #f9f9f9;">
+            <img id="previewImg" style="display: none; user-select: none; -webkit-user-drag: none;" />
+            <canvas id="pdfViewer" style="display: none; user-select: none;"></canvas>
           </div>
-        
+  
           <div id="errorMessage" class="alert alert-danger mt-3" style="display:none;"></div>
           <div id="successMessage" class="alert alert-success mt-3" style="display:none;"></div>
         </div>
@@ -360,37 +595,6 @@
               <h5 class="mb-0">Invoice Editor</h5>
             </div>
             <div class="card-body" style="overflow-y: auto;">
-              <div class="preview-controls mb-3">
-                <div class="row">
-                  <div class="col-md-6">
-                    <label class="form-label">Paper Size</label>
-                    <select class="form-select" id="paperSizeSelect">
-                      <option value="A4">A4</option>
-                      <option value="Letter">Letter</option>
-                      <option value="A5">A5</option>
-                    </select>
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label">Top Margin (inches)</label>
-                    <input type="number" class="form-control" id="topMargin" value="0.7" step="0.1" min="0">
-                  </div>
-                </div>
-                <div class="row mt-2">
-                  <div class="col-md-4">
-                    <label class="form-label">Header Color</label>
-                    <input type="color" class="form-control p-1" id="headerColor" value="#333333" onchange="updatePreviewColors()">
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label">Text Color</label>
-                    <input type="color" class="form-control p-1" id="textColor" value="#333333" onchange="updatePreviewColors()">
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label">Accent Color</label>
-                    <input type="color" class="form-control p-1" id="accentColor" value="#2196F3" onchange="updatePreviewColors()">
-                  </div>
-                </div>
-              </div>
-
               <form id="invoiceForm">
                 <div class="row mb-3">
                   <div class="col-md-6">
@@ -487,6 +691,7 @@
           <div class="card h-100">
             <div class="card-header text-white" style="background-color: #0db561;">
               <h5 class="mb-0" style="display: inline-block;">Invoice Preview</h5>
+              
               <div class="btn-group" style="display: inline-block;">
                 <select class="form-select form-select-sm" id="templateSelect" style="width: 150px; display: inline-block;">
                   <option value="default">Default Template</option>
@@ -496,11 +701,13 @@
                   <option value="professional">Professional Template</option>
                 </select>
               </div>
+
               <div class="btn-group" style="display: inline-block;">
                 <button type="button" class="btn btn-success me-md-1" id="saveBtn">
                   <i class="bi bi-save me-1"></i> Save Invoice
                 </button>
               </div>
+
               <div class="btn-group" style="display: inline-block;">
                 <button type="button" class="btn btn-sm btn-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                   <i class="fas fa-download me-1"></i> Download
@@ -510,12 +717,13 @@
                   <li><button class="dropdown-item" id="downloadImageBtn"><i class="fas fa-image me-2"></i>Image (PNG)</button></li>
                 </ul>
               </div>
+
             </div>
             <div class="card-body p-0">
-              <div id="invoice-preview-container" style="height: 100%; overflow: auto; background: #f5f5f5; display: flex; justify-content: center; align-items: center;">
-                <div id="invoice-paper" class="invoice-paper default-template">
-                  <!-- Template content will be rendered here -->
-                </div>
+              <div id="invoice-preview-container">
+                  <div id="invoice-scale-wrapper">
+                      <!-- The invoice template will be injected here in its natural size -->
+                  </div>
               </div>
             </div>
           </div>
@@ -556,5 +764,4 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <!-- <script src="/static/js/invoice_process.js"></script> -->
-   <script src="/static/js/test.js"></script>
+  <script src="/static/js/invoice_process.js"></script>

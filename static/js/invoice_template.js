@@ -4,7 +4,7 @@ const invoiceTemplates = {
         description: "Basic Layout with essential fields",
         category: "Business",
         html: (data) => `
-        <div class="invoice-paper default-template">
+        <div class="invoice-paper-temp default-template">
             <!-- Header Section -->
             <div class="header-section">
                 <div class="company-info">
@@ -13,19 +13,37 @@ const invoiceTemplates = {
                     <div class="company-gst">GSTIN: ${data.supplierGst || ''}</div>
                 </div>
                 <div class="invoice-meta">
-                    <div class="invoice-title">INVOICE</div>
-                    <div class="invoice-number">#${data.invoiceNumber || 'INV-001'}</div>
-                    <div class="invoice-date">${data.invoiceDate || new Date().toLocaleDateString()}</div>
+                    <div class="invoice-title-row">
+                        <span class="invoice-title">TAX INVOICE</span>
+                    </div>
+                    <div class="invoice-number-row">
+                        <span class="invoice-number-label">Invoice No:</span>
+                        <span class="invoice-number">${data.invoiceNumber || 'INV-001'}</span>
+                    </div>
+                    <div class="due-amount-row">
+                        <span class="due-amount-label">Due Amount:</span>
+                        <span class="due-amount">₹${(data.subtotal + data.taxAmount).toFixed(2)}</span>
+                    </div>
                 </div>
             </div>
 
             <!-- Client Section -->
             <div class="client-section">
-                <div class="bill-to-label">BILL TO:</div>
                 <div class="client-info">
+                    <div class="bill-to-label">BILL TO:</div>
                     <div class="client-name">${data.toAddress.split('\n')[0] || 'Customer'}</div>
                     <div class="client-address">${data.toAddress.replace(/\n/g, '<br>') || 'Address'}</div>
                     <div class="client-gst">GSTIN: ${data.customerGst || ''}</div>
+                </div>
+                <div class="client-meta">
+                    <div class="invoice-date-row">
+                        <span class="invoice-date-label">Invoice Date:</span>
+                        <span class="invoice-date">${data.invoiceDate || new Date().toLocaleDateString()}</span>
+                    </div>
+                    <div class="customer-gst-row">
+                        <span class="customer-gst-label">Customer GSTIN:</span>
+                        <span class="customer-gst">${data.customerGst || 'N/A'}</span>
+                    </div>
                 </div>
             </div>
 
@@ -55,11 +73,11 @@ const invoiceTemplates = {
                 <div class="amounts-section">
                     <div class="subtotal-row">
                         <span>Subtotal:</span>
-                        <span>${data.subtotal.toFixed(2)}</span>
+                        <span>₹${data.subtotal.toFixed(2)}</span>
                     </div>
                     <div class="tax-row">
                         <span>Tax:</span>
-                        <span>${data.taxAmount.toFixed(2)}</span>
+                        <span>₹${data.taxAmount.toFixed(2)}</span>
                     </div>
                     <div class="total-row">
                         <span>Total:</span>
@@ -91,213 +109,233 @@ const invoiceTemplates = {
                 font-family: Arial, sans-serif;
             }
             
-            .invoice-paper {
-                width: 210mm;
-                min-height: 297mm;
+            .invoice-paper-temp {
+                width: 210mm !important;
+                min-height: 297mm !important;
                 margin: 0 auto;
-                background: white;
-                box-shadow: 0 0 10px rgba(0,0,0,0.1);
-                position: relative;
-                display: flex;
-                flex-direction: column;
-                padding: 20mm;
-                box-sizing: border-box;
-            }
-            
-            .default-template {
-                font-family: Arial, sans-serif;
+                padding: var(--inv-topMargin, 0.7in) var(--inv-sideMargin, 0.5in);
                 background-color: white;
                 box-sizing: border-box;
-                overflow: hidden;
+                color: var(--inv-textColor, #333333);
+                font-family: Arial, sans-serif;
                 page-break-inside: avoid;
             }
-            
-            .default-template .header-section {
+
+            /* Header Section */
+            .header-section {
                 display: flex;
                 justify-content: space-between;
                 margin-bottom: 30px;
             }
-            
-            .default-template .company-info {
-                width: 50%;
+
+            .company-info {
+                width: 60%;
             }
-            
-            .default-template .invoice-title {
-                width: 50%;
+
+            .invoice-meta {
+                width: 35%;
                 text-align: right;
+            }
+
+            .company-name {
+                font-weight: bold;
+                font-size: 20px;
+                margin-bottom: 8px;
+                color: var(--inv-textColor, #333333);
+            }
+
+            .company-address {
+                font-size: 14px;
+                color: var(--inv-textColor, #333333);
+                margin-bottom: 8px;
+                line-height: 1.4;
+                opacity: 0.8;
+            }
+
+            .company-gst {
+                font-size: 14px;
+                color: var(--inv-textColor, #333333);
+                opacity: 0.8;
+            }
+
+            .invoice-title {
                 font-size: 24px;
                 font-weight: bold;
                 margin-bottom: 10px;
+                color: var(--inv-textColor, #333333);
             }
-            
-            .default-template .company-name {
+
+            .invoice-number-row, .due-amount-row {
+                margin-bottom: 8px;
+                font-size: 14px;
+            }
+
+            .invoice-number, .due-amount {
                 font-weight: bold;
-                font-size: 18px;
-                margin-bottom: 5px;
+                color: var(--inv-accentColor, #2196F3);
             }
-            
-            .default-template .company-address {
-                font-size: 14px;
-                color: #555;
-                margin-bottom: 5px;
-                line-height: 1.4;
-            }
-            
-            .default-template .company-gst {
-                font-size: 14px;
-                color: #555;
-            }
-            
-            .default-template .invoice-number {
-                font-weight: bold;
-                font-size: 16px;
-                margin-bottom: 5px;
-            }
-            
-            .default-template .invoice-date {
-                font-size: 14px;
-                color: #555;
-            }
-            
-            .default-template .client-section {
+
+            /* Client Section */
+            .client-section {
                 display: flex;
+                justify-content: space-between;
                 margin-bottom: 30px;
                 border-top: 1px solid #eee;
                 border-bottom: 1px solid #eee;
                 padding: 15px 0;
             }
-            
-            .default-template .bill-to-label {
+
+            .client-info {
+                width: 60%;
+            }
+
+            .client-meta {
+                width: 35%;
+                text-align: right;
+            }
+
+            .bill-to-label {
                 font-weight: bold;
-                margin-right: 20px;
-                width: 80px;
+                margin-bottom: 8px;
             }
-            
-            .default-template .client-info {
-                flex: 1;
-            }
-            
-            .default-template .client-name {
+
+            .client-name {
                 font-weight: bold;
                 font-size: 16px;
-                margin-bottom: 5px;
+                margin-bottom: 8px;
             }
-            
-            .default-template .client-address {
+
+            .client-address {
                 font-size: 14px;
-                color: #555;
-                margin-bottom: 5px;
+                margin-bottom: 8px;
                 line-height: 1.4;
+                opacity: 0.8;
             }
-            
-            .default-template .client-gst {
+
+            .client-gst {
                 font-size: 14px;
-                color: #555;
+                opacity: 0.8;
             }
-            
-            .default-template .items-table {
+
+            .invoice-date-row, .customer-gst-row {
+                margin-bottom: 8px;
+                font-size: 14px;
+            }
+
+            .invoice-date-label, .customer-gst-label {
+                opacity: 0.8;
+            }
+
+            /* Items Table */
+            .items-table {
                 width: 100%;
                 border-collapse: collapse;
                 margin: 15px 0;
                 font-size: 14px;
             }
-            
-            .default-template .items-table th {
-                background-color: #333;
+
+            .items-table th {
+                background-color: var(--inv-headerColor, #333333);
                 color: white;
                 text-align: left;
                 padding: 10px;
                 font-weight: normal;
             }
-            
-            .default-template .items-table td {
+
+            .items-table td {
                 border-bottom: 1px solid #ddd;
                 padding: 10px;
                 vertical-align: top;
             }
-            
-            .default-template .item-desc {
-                color: #666;
+
+            .item-desc {
+                color: var(--inv-textColor, #666666);
             }
-            
-            .default-template .totals-section {
+
+            /* Totals Section */
+            .totals-section {
                 display: flex;
                 margin-top: 20px;
                 margin-bottom: 40px;
             }
-            
-            .default-template .notes-section {
+
+            .notes-section {
                 width: 60%;
                 padding-right: 20px;
             }
-            
-            .default-template .notes-label {
+
+            .notes-label {
                 font-weight: bold;
                 margin-bottom: 10px;
             }
-            
-            .default-template .notes-content {
+
+            .notes-content {
                 font-size: 14px;
-                color: #555;
                 line-height: 1.4;
+                opacity: 0.8;
             }
-            
-            .default-template .amounts-section {
+
+            .amounts-section {
                 width: 40%;
                 font-size: 14px;
             }
-            
-            .default-template .subtotal-row,
-            .default-template .tax-row,
-            .default-template .total-row {
+
+            .subtotal-row,
+            .tax-row,
+            .total-row {
                 display: flex;
                 justify-content: space-between;
                 margin-bottom: 10px;
             }
-            
-            .default-template .total-row {
+
+            .total-row {
                 font-weight: bold;
                 font-size: 16px;
-                border-top: 1px solid #333;
+                border-top: 1px solid var(--inv-textColor, #333333);
                 padding-top: 10px;
                 margin-top: 10px;
             }
-            
-            .default-template .footer-section {
+
+            .total-row span:last-child {
+                color: var(--inv-accentColor, #2196F3);
+            }
+
+            /* Footer Section */
+            .footer-section {
                 margin-top: auto;
                 padding-top: 30px;
                 border-top: 1px solid #eee;
             }
-            
-            .default-template .thank-you {
+
+            .thank-you {
                 font-style: italic;
-                color: #555;
-                margin-bottom: 30px;
                 text-align: center;
+                margin-bottom: 30px;
+                opacity: 0.8;
             }
-            
-            .default-template .signature-section {
+
+            .signature-section {
                 text-align: right;
             }
-            
-            .default-template .signature-line {
+
+            .signature-line {
                 display: inline-block;
                 width: 200px;
-                border-bottom: 1px solid #333;
+                border-bottom: 1px solid var(--inv-textColor, #333333);
                 margin-bottom: 5px;
             }
-            
-            .default-template .signature-label {
+
+            .signature-label {
                 font-size: 14px;
-                color: #555;
+                opacity: 0.8;
             }
-            
+
             @media print {
                 body {
                     background: none;
                 }
                 
-                .invoice-paper {
+                .invoice-paper-temp {
                     box-shadow: none;
                     margin: 0;
                     width: auto;
@@ -308,41 +346,58 @@ const invoiceTemplates = {
     },
     classic: {
         name: "Classic Invoice",
-        description: "Traditional layout with clear sections",
+        description: "Elegant traditional layout with vintage styling",
         category: "Business",
         html: (data) => `
-        <div class="invoice-paper classic-template">
-            <div class="header-section">
+        <div class="invoice-paper-temp classic-template">
+            <!-- Decorative Header -->
+            <div class="decorative-header">
+                <div class="company-logo-placeholder"></div>
+                <div class="header-details">
+                    <div class="invoice-title">TAX INVOICE</div>
+                    <div class="invoice-meta">
+                        <div class="invoice-number-row">
+                            <span class="meta-label">Invoice No:</span>
+                            <span class="invoice-number">${data.invoiceNumber || 'INV-001'}</span>
+                        </div>
+                        <div class="invoice-date-row">
+                            <span class="meta-label">Date:</span>
+                            <span class="invoice-date">${data.invoiceDate || new Date().toLocaleDateString()}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Company and Client Sections -->
+            <div class="main-details-section">
                 <div class="company-info">
                     <div class="company-name">${data.fromAddress.split('\n')[0] || 'Your Company'}</div>
                     <div class="company-address">${data.fromAddress.replace(/\n/g, '<br>') || 'Address'}</div>
-                    <div class="company-gst">GSTIN: ${data.supplierGst || ''}</div>
+                    <div class="company-contact">
+                        <span class="company-gst">GSTIN: ${data.supplierGst || ''}</span>
+                    </div>
                 </div>
-                <div class="invoice-meta">
-                    <div class="invoice-title">INVOICE</div>
-                    <div class="invoice-number">#${data.invoiceNumber || 'INV-001'}</div>
-                    <div class="invoice-date">${data.invoiceDate || new Date().toLocaleDateString()}</div>
-                </div>
-            </div>
 
-            <div class="client-section">
-                <div class="bill-to-label">BILL TO:</div>
                 <div class="client-info">
+                    <div class="section-title">BILL TO</div>
                     <div class="client-name">${data.toAddress.split('\n')[0] || 'Customer'}</div>
                     <div class="client-address">${data.toAddress.replace(/\n/g, '<br>') || 'Address'}</div>
-                    <div class="client-gst">GSTIN: ${data.customerGst || ''}</div>
+                    <div class="client-contact">
+                        <span class="client-gst">GSTIN: ${data.customerGst || ''}</span>
+                    </div>
                 </div>
             </div>
 
+            <!-- Items Table -->
             <table class="items-table">
                 <thead>
                     <tr>
-                        <th class="item-no">#</th>
-                        <th class="item-desc">Description</th>
-                        <th class="item-qty">Qty</th>
-                        <th class="item-rate">Rate</th>
-                        <th class="item-tax">Tax %</th>
-                        <th class="item-amount">Amount</th>
+                        <th class="item-no">SR</th>
+                        <th class="item-desc">DESCRIPTION</th>
+                        <th class="item-qty">QTY</th>
+                        <th class="item-rate">RATE</th>
+                        <th class="item-tax">TAX %</th>
+                        <th class="item-amount">AMOUNT</th>
                     </tr>
                 </thead>
                 <tbody class="items-body">
@@ -350,263 +405,374 @@ const invoiceTemplates = {
                 </tbody>
             </table>
 
+            <!-- Totals Section -->
             <div class="totals-section">
                 <div class="notes-section">
-                    <div class="notes-label">Notes</div>
-                    <div class="notes-content">${data.taxDetails || ''}</div>
+                    <div class="section-title">TERMS & NOTES</div>
+                    <div class="notes-content">${data.taxDetails || 'Payment due within 15 days. Thank you for your business.'}</div>
                 </div>
                 <div class="amounts-section">
                     <div class="subtotal-row">
-                        <span>Subtotal:</span>
-                        <span>${data.subtotal.toFixed(2)}</span>
+                        <span class="amount-label">Subtotal:</span>
+                        <span class="amount-value">₹${data.subtotal.toFixed(2)}</span>
                     </div>
                     <div class="tax-row">
-                        <span>Tax:</span>
-                        <span>${data.taxAmount.toFixed(2)}</span>
+                        <span class="amount-label">Tax:</span>
+                        <span class="amount-value">₹${data.taxAmount.toFixed(2)}</span>
                     </div>
                     <div class="total-row">
-                        <span>Total:</span>
-                        <span>₹${(data.subtotal + data.taxAmount).toFixed(2)}</span>
+                        <span class="amount-label">Total Amount:</span>
+                        <span class="amount-value">₹${(data.subtotal + data.taxAmount).toFixed(2)}</span>
+                    </div>
+                    <div class="due-amount-row">
+                        <span class="amount-label">Amount Due:</span>
+                        <span class="amount-value">₹${(data.subtotal + data.taxAmount).toFixed(2)}</span>
                     </div>
                 </div>
             </div>
 
+            <!-- Footer -->
             <div class="footer-section">
-                <div class="thank-you">Thank you for your business!</div>
+                <div class="bank-details">
+                    <div class="section-title">BANK DETAILS</div>
+                    <div class="bank-info">
+                        <div>Bank Name: Sample Bank</div>
+                        <div>Account No: 1234567890</div>
+                        <div>IFSC Code: SBIN0000123</div>
+                    </div>
+                </div>
                 <div class="signature-section">
                     <div class="signature-line"></div>
-                    <div class="signature-label">Authorized Signature</div>
+                    <div class="signature-label">Authorized Signatory</div>
                 </div>
             </div>
         </div>
         `,
         styles: `
-            .classic-template {
-                font-family: 'Times New Roman', serif;
-                color: #333;
-                width: 210mm;
-                min-height: 297mm;
-                margin: 0 auto;
-                background: white;
-                padding: 20mm;
-                box-sizing: border-box;
-                display: flex;
-                flex-direction: column;
+            @page {
+                size: A4;
+                margin: 0;
             }
             
-            .classic-template .header-section {
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: #f9f9f9;
+            }
+            
+            .invoice-paper-temp {
+                width: 210mm !important;
+                min-height: 297mm !important;
+                margin: 0 auto;
+                padding: var(--inv-topMargin, 15mm) var(--inv-sideMargin, 20mm);
+                background-color: white;
+                color: var(--inv-textColor, #333);
+                font-family: 'Times New Roman', serif;
+                box-shadow: 0 0 10px rgba(0,0,0,0.1);
+                position: relative;
+            }
+
+            /* Decorative Header */
+            .decorative-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding-bottom: 15px;
+                margin-bottom: 20px;
+                border-bottom: 2px solid var(--inv-headerColor, #8B4513);
+                position: relative;
+            }
+
+            .decorative-header::after {
+                content: '';
+                position: absolute;
+                bottom: -5px;
+                left: 0;
+                width: 100%;
+                height: 1px;
+                background-color: var(--inv-headerColor, #8B4513);
+                opacity: 0.3;
+            }
+
+            .company-logo-placeholder {
+                width: 80px;
+                height: 80px;
+                border: 1px dashed #ccc;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #999;
+                font-size: 12px;
+            }
+
+            .header-details {
+                text-align: right;
+            }
+
+            .invoice-title {
+                font-size: 28px;
+                font-weight: bold;
+                color: var(--inv-headerColor, #8B4513);
+                margin-bottom: 5px;
+                letter-spacing: 1px;
+            }
+
+            .invoice-meta {
+                font-size: 14px;
+            }
+
+            .invoice-number-row, .invoice-date-row {
+                margin-bottom: 3px;
+            }
+
+            .meta-label {
+                font-weight: bold;
+                margin-right: 5px;
+            }
+
+            .invoice-number {
+                color: var(--inv-accentColor, #8B4513);
+                font-weight: bold;
+            }
+
+            /* Main Details Section */
+            .main-details-section {
                 display: flex;
                 justify-content: space-between;
                 margin-bottom: 30px;
-                border-bottom: 2px solid #333;
-                padding-bottom: 20px;
             }
-            
-            .classic-template .company-name {
-                font-size: 22px;
+
+            .company-info, .client-info {
+                width: 48%;
+            }
+
+            .section-title {
                 font-weight: bold;
+                font-size: 16px;
                 margin-bottom: 10px;
+                color: var(--inv-headerColor, #8B4513);
+                border-bottom: 1px solid #eee;
+                padding-bottom: 5px;
             }
-            
-            .classic-template .company-address {
+
+            .company-name, .client-name {
+                font-size: 18px;
+                font-weight: bold;
+                margin-bottom: 8px;
+            }
+
+            .company-address, .client-address {
                 font-size: 14px;
-                line-height: 1.4;
-                margin-bottom: 5px;
+                line-height: 1.5;
+                margin-bottom: 8px;
             }
-            
-            .classic-template .company-gst {
+
+            .company-contact, .client-contact {
                 font-size: 14px;
                 font-style: italic;
             }
-            
-            .classic-template .invoice-title {
-                font-size: 28px;
-                font-weight: bold;
-                text-align: right;
-                margin-bottom: 10px;
-            }
-            
-            .classic-template .invoice-number {
-                font-size: 16px;
-                text-align: right;
-                margin-bottom: 5px;
-            }
-            
-            .classic-template .invoice-date {
-                font-size: 14px;
-                text-align: right;
-            }
-            
-            .classic-template .client-section {
-                display: flex;
-                margin: 25px 0;
-                padding: 15px 0;
-                border-top: 1px solid #ddd;
-                border-bottom: 1px solid #ddd;
-            }
-            
-            .classic-template .bill-to-label {
-                font-weight: bold;
-                margin-right: 20px;
-                width: 80px;
-                font-size: 16px;
-            }
-            
-            .classic-template .client-name {
-                font-weight: bold;
-                font-size: 16px;
-                margin-bottom: 5px;
-            }
-            
-            .classic-template .client-address {
-                font-size: 14px;
-                line-height: 1.4;
-                margin-bottom: 5px;
-            }
-            
-            .classic-template .client-gst {
-                font-size: 14px;
-                font-style: italic;
-            }
-            
-            .classic-template .items-table {
+
+            /* Items Table */
+            .items-table {
                 width: 100%;
                 border-collapse: collapse;
-                margin: 20px 0;
+                margin: 25px 0;
                 font-size: 14px;
             }
-            
-            .classic-template .items-table th {
-                background-color: #f2f2f2;
-                padding: 10px;
+
+            .items-table th {
+                background-color: var(--inv-headerColor, #8B4513);
+                color: white;
+                padding: 12px 10px;
                 text-align: left;
+                font-weight: normal;
                 border: 1px solid #ddd;
-                font-weight: bold;
             }
-            
-            .classic-template .items-table td {
+
+            .items-table td {
                 padding: 10px;
                 border: 1px solid #ddd;
             }
-            
-            .classic-template .totals-section {
+
+            .items-table tr:nth-child(even) {
+                background-color: #f9f9f9;
+            }
+
+            /* Totals Section */
+            .totals-section {
                 display: flex;
                 margin-top: 20px;
             }
-            
-            .classic-template .notes-section {
+
+            .notes-section {
                 width: 60%;
                 padding-right: 20px;
             }
-            
-            .classic-template .notes-label {
-                font-weight: bold;
-                margin-bottom: 10px;
-                font-size: 16px;
-            }
-            
-            .classic-template .notes-content {
+
+            .notes-content {
                 font-size: 14px;
-                line-height: 1.4;
+                line-height: 1.6;
+                padding: 10px;
+                border: 1px solid #eee;
+                min-height: 100px;
             }
-            
-            .classic-template .amounts-section {
+
+            .amounts-section {
                 width: 40%;
                 font-size: 14px;
+                border: 1px solid #eee;
+                padding: 15px;
             }
-            
-            .classic-template .subtotal-row,
-            .classic-template .tax-row {
+
+            .subtotal-row, .tax-row, .total-row, .due-amount-row {
                 display: flex;
                 justify-content: space-between;
                 margin-bottom: 10px;
             }
-            
-            .classic-template .total-row {
-                display: flex;
-                justify-content: space-between;
+
+            .total-row, .due-amount-row {
                 font-weight: bold;
-                font-size: 16px;
-                margin-top: 10px;
                 padding-top: 10px;
-                border-top: 1px solid #333;
-            }
-            
-            .classic-template .footer-section {
-                margin-top: auto;
-                padding-top: 30px;
                 border-top: 1px solid #ddd;
             }
-            
-            .classic-template .thank-you {
-                font-style: italic;
-                text-align: center;
-                margin-bottom: 30px;
+
+            .total-row .amount-value, .due-amount-row .amount-value {
+                color: var(--inv-accentColor, #8B4513);
+                font-size: 16px;
+            }
+
+            /* Footer Section */
+            .footer-section {
+                display: flex;
+                justify-content: space-between;
+                margin-top: 40px;
+                padding-top: 20px;
+                border-top: 2px solid var(--inv-headerColor, #8B4513);
+            }
+
+            .bank-details {
+                width: 60%;
+            }
+
+            .bank-info {
                 font-size: 14px;
+                line-height: 1.6;
             }
-            
-            .classic-template .signature-section {
-                text-align: right;
+
+            .signature-section {
+                width: 30%;
+                text-align: center;
             }
-            
-            .classic-template .signature-line {
+
+            .signature-line {
                 display: inline-block;
                 width: 200px;
-                border-bottom: 1px solid #333;
+                border-bottom: 1px solid var(--inv-textColor, #333);
                 margin-bottom: 5px;
             }
-            
-            .classic-template .signature-label {
+
+            .signature-label {
                 font-size: 14px;
+                font-weight: bold;
             }
-            
+
             @media print {
-                .classic-template {
+                body {
+                    background: none;
+                }
+                
+                .invoice-paper-temp {
                     box-shadow: none;
                     margin: 0;
                     width: auto;
                     height: auto;
+                    padding: 15mm 20mm;
                 }
             }
         `
     },
     modern: {
         name: "Modern Invoice",
-        description: "Clean design with accent colors",
+        description: "Sleek contemporary design with clean typography",
         category: "Business",
         html: (data) => `
-        <div class="invoice-paper modern-template">
+        <div class="invoice-paper-temp modern-template">
+            <!-- Modern Header with Accent Bar -->
+            <div class="header-accent-bar"></div>
+            
             <div class="header-section">
                 <div class="company-info">
-                    <div class="company-name">${data.fromAddress.split('\n')[0] || 'Your Company'}</div>
-                    <div class="company-address">${data.fromAddress.replace(/\n/g, '<br>') || 'Address'}</div>
-                    <div class="company-gst">GSTIN: ${data.supplierGst || ''}</div>
+                    <div class="company-logo-placeholder">
+                        <span class="logo-initials">${data.fromAddress.split('\n')[0] ? data.fromAddress.split('\n')[0].charAt(0) : 'Y'}</span>
+                    </div>
+                    <div class="company-details">
+                        <div class="company-name">${data.fromAddress.split('\n')[0] || 'Your Company'}</div>
+                        <div class="company-address">${data.fromAddress.replace(/\n/g, '<br>') || 'Address'}</div>
+                        <div class="company-contact">
+                            <span class="company-gst">GSTIN: ${data.supplierGst || ''}</span>
+                        </div>
+                    </div>
                 </div>
+                
                 <div class="invoice-meta">
                     <div class="invoice-title">INVOICE</div>
-                    <div class="invoice-number">#${data.invoiceNumber || 'INV-001'}</div>
-                    <div class="invoice-date">${data.invoiceDate || new Date().toLocaleDateString()}</div>
+                    <div class="invoice-meta-grid">
+                        <div class="meta-label">Invoice #</div>
+                        <div class="meta-value invoice-number">${data.invoiceNumber || 'INV-001'}</div>
+                        
+                        <div class="meta-label">Date Issued</div>
+                        <div class="meta-value">${data.invoiceDate || new Date().toLocaleDateString()}</div>
+                        
+                        <div class="meta-label">Due Date</div>
+                        <div class="meta-value">${data.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}</div>
+                        
+                        <div class="meta-label">Amount Due</div>
+                        <div class="meta-value due-amount">₹${(data.subtotal + data.taxAmount).toFixed(2)}</div>
+                    </div>
                 </div>
             </div>
 
+            <!-- Client Section with Clean Layout -->
             <div class="client-section">
-                <div class="bill-to-label">BILL TO:</div>
                 <div class="client-info">
+                    <div class="section-title with-icon">
+                        <svg class="icon" viewBox="0 0 24 24" width="18" height="18">
+                            <path fill="currentColor" d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z" />
+                        </svg>
+                        <span>CLIENT DETAILS</span>
+                    </div>
                     <div class="client-name">${data.toAddress.split('\n')[0] || 'Customer'}</div>
                     <div class="client-address">${data.toAddress.replace(/\n/g, '<br>') || 'Address'}</div>
-                    <div class="client-gst">GSTIN: ${data.customerGst || ''}</div>
+                    <div class="client-contact">
+                        <span class="client-gst">GSTIN: ${data.customerGst || ''}</span>
+                    </div>
+                </div>
+                
+                <div class="payment-info">
+                    <div class="section-title with-icon">
+                        <svg class="icon" viewBox="0 0 24 24" width="18" height="18">
+                            <path fill="currentColor" d="M20,8H4V6H20M20,18H4V12H20M20,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6C22,4.89 21.1,4 20,4Z" />
+                        </svg>
+                        <span>PAYMENT METHOD</span>
+                    </div>
+                    <div class="payment-method">Bank Transfer</div>
+                    <div class="payment-details">
+                        <div>Account No: 1234 5678 9012</div>
+                        <div>IFSC: ABCD0123456</div>
+                    </div>
                 </div>
             </div>
 
+            <!-- Minimalist Items Table -->
             <table class="items-table">
                 <thead>
                     <tr>
                         <th class="item-no">#</th>
-                        <th class="item-desc">Description</th>
-                        <th class="item-qty">Qty</th>
-                        <th class="item-rate">Rate</th>
-                        <th class="item-tax">Tax %</th>
-                        <th class="item-amount">Amount</th>
+                        <th class="item-desc">ITEM DESCRIPTION</th>
+                        <th class="item-qty">QTY</th>
+                        <th class="item-rate">RATE</th>
+                        <th class="item-tax">TAX</th>
+                        <th class="item-amount">AMOUNT</th>
                     </tr>
                 </thead>
                 <tbody class="items-body">
@@ -614,29 +780,39 @@ const invoiceTemplates = {
                 </tbody>
             </table>
 
-            <div class="totals-section">
+            <!-- Summary Section -->
+            <div class="summary-section">
                 <div class="notes-section">
-                    <div class="notes-label">Notes</div>
-                    <div class="notes-content">${data.taxDetails || ''}</div>
+                    <div class="section-title">NOTES</div>
+                    <div class="notes-content">${data.taxDetails || 'Payment due within 15 days. Late payments subject to 1.5% monthly interest.'}</div>
                 </div>
+                
                 <div class="amounts-section">
-                    <div class="subtotal-row">
-                        <span>Subtotal:</span>
-                        <span>${data.subtotal.toFixed(2)}</span>
+                    <div class="amount-row subtotal-row">
+                        <div class="amount-label">Subtotal</div>
+                        <div class="amount-value">₹${data.subtotal.toFixed(2)}</div>
                     </div>
-                    <div class="tax-row">
-                        <span>Tax:</span>
-                        <span>${data.taxAmount.toFixed(2)}</span>
+                    <div class="amount-row tax-row">
+                        <div class="amount-label">Tax (${data.taxRate || 18}%)</div>
+                        <div class="amount-value">₹${data.taxAmount.toFixed(2)}</div>
                     </div>
-                    <div class="total-row">
-                        <span>Total:</span>
-                        <span>₹${(data.subtotal + data.taxAmount).toFixed(2)}</span>
+                    <div class="amount-row discount-row">
+                        <div class="amount-label">Discount</div>
+                        <div class="amount-value">-₹0.00</div>
+                    </div>
+                    <div class="amount-row total-row">
+                        <div class="amount-label">Total Due</div>
+                        <div class="amount-value">₹${(data.subtotal + data.taxAmount).toFixed(2)}</div>
                     </div>
                 </div>
             </div>
 
+            <!-- Modern Footer -->
             <div class="footer-section">
-                <div class="thank-you">Thank you for your business!</div>
+                <div class="thank-you-message">
+                    <div class="thank-you">Thank you for your business!</div>
+                    <div class="company-slogan">Quality products · Professional service</div>
+                </div>
                 <div class="signature-section">
                     <div class="signature-line"></div>
                     <div class="signature-label">Authorized Signature</div>
@@ -645,242 +821,346 @@ const invoiceTemplates = {
         </div>
         `,
         styles: `
-            .modern-template {
-                font-family: 'Helvetica Neue', Arial, sans-serif;
-                color: #333;
-                width: 210mm;
-                min-height: 297mm;
-                margin: 0 auto;
-                background: white;
-                padding: 20mm;
-                box-sizing: border-box;
-                display: flex;
-                flex-direction: column;
+            @page {
+                size: A4;
+                margin: 0;
             }
             
-            .modern-template .header-section {
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: #f8fafc;
+            }
+            
+            .invoice-paper-temp {
+                width: 210mm !important;
+                min-height: 297mm !important;
+                margin: 0 auto;
+                padding: var(--inv-topMargin, 15mm) var(--inv-sideMargin, 20mm);
+                background-color: white;
+                color: var(--inv-textColor, #334155);
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                position: relative;
+                overflow: hidden;
+            }
+
+            /* Modern Header Styles */
+            .header-accent-bar {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 6px;
+                background-color: var(--inv-accentColor, #3B82F6);
+            }
+
+            .header-section {
                 display: flex;
                 justify-content: space-between;
                 margin-bottom: 40px;
+                padding-top: 20px;
             }
-            
-            .modern-template .company-name {
-                font-size: 22px;
-                color: #2196F3;
-                margin: 0 0 10px 0;
-                font-weight: bold;
-            }
-            
-            .modern-template .company-address {
-                color: #666;
-                margin-bottom: 5px;
-                line-height: 1.4;
-                font-size: 14px;
-            }
-            
-            .modern-template .company-gst {
-                font-size: 13px;
-                color: #888;
-            }
-            
-            .modern-template .invoice-title {
-                font-size: 28px;
-                font-weight: bold;
-                color: #2196F3;
-                margin-bottom: 10px;
-                text-align: right;
-            }
-            
-            .modern-template .invoice-number {
-                font-size: 16px;
-                margin-bottom: 5px;
-                text-align: right;
-            }
-            
-            .modern-template .invoice-date {
-                font-size: 14px;
-                color: #888;
-                text-align: right;
-            }
-            
-            .modern-template .client-section {
+
+            .company-info {
                 display: flex;
-                margin-bottom: 30px;
-                padding: 15px 0;
-                border-top: 1px solid #eee;
-                border-bottom: 1px solid #eee;
+                align-items: center;
+                gap: 20px;
             }
-            
-            .modern-template .bill-to-label {
-                font-size: 16px;
-                color: #2196F3;
-                margin-right: 20px;
-                width: 80px;
+
+            .company-logo-placeholder {
+                width: 60px;
+                height: 60px;
+                border-radius: 12px;
+                background-color: var(--inv-accentColor, #3B82F6);
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 24px;
+                font-weight: bold;
+            }
+
+            .company-name {
+                font-size: 22px;
+                font-weight: 700;
+                color: var(--inv-textColor, #1E293B);
+                margin-bottom: 6px;
+            }
+
+            .company-address {
+                font-size: 14px;
+                color: var(--inv-textColor, #64748B);
+                line-height: 1.5;
+                margin-bottom: 6px;
+            }
+
+            .company-contact {
+                font-size: 13px;
+                color: var(--inv-textColor, #64748B);
+            }
+
+            .invoice-meta {
+                text-align: right;
+            }
+
+            .invoice-title {
+                font-size: 28px;
+                font-weight: 800;
+                color: var(--inv-textColor, #1E293B);
+                margin-bottom: 15px;
+                letter-spacing: -0.5px;
+            }
+
+            .invoice-meta-grid {
+                display: grid;
+                grid-template-columns: auto auto;
+                gap: 8px 15px;
+                text-align: right;
+            }
+
+            .meta-label {
+                font-size: 13px;
+                color: var(--inv-textColor, #64748B);
+                font-weight: 500;
+            }
+
+            .meta-value {
+                font-size: 14px;
+                font-weight: 600;
+                color: var(--inv-textColor, #1E293B);
+            }
+
+            .invoice-number, .due-amount {
+                color: var(--inv-accentColor, #3B82F6);
+                font-weight: 700;
+            }
+
+            /* Client Section */
+            .client-section {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 30px;
+                margin-bottom: 40px;
+                padding: 25px;
+                background-color: #F8FAFC;
+                border-radius: 12px;
+            }
+
+            .section-title {
+                font-size: 14px;
+                font-weight: 700;
                 text-transform: uppercase;
-                font-weight: bold;
+                letter-spacing: 0.5px;
+                color: var(--inv-accentColor, #3B82F6);
+                margin-bottom: 15px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
             }
-            
-            .modern-template .client-name {
-                font-weight: bold;
-                margin-bottom: 5px;
+
+            .client-name {
                 font-size: 16px;
+                font-weight: 600;
+                margin-bottom: 8px;
+                color: var(--inv-textColor, #1E293B);
             }
-            
-            .modern-template .client-address {
-                color: #666;
-                margin-bottom: 5px;
-                line-height: 1.4;
+
+            .client-address, .payment-method {
                 font-size: 14px;
+                color: var(--inv-textColor, #64748B);
+                line-height: 1.5;
+                margin-bottom: 8px;
             }
-            
-            .modern-template .client-gst {
-                font-size: 14px;
-                color: #888;
+
+            .client-contact, .payment-details {
+                font-size: 13px;
+                color: var(--inv-textColor, #64748B);
             }
-            
-            .modern-template .items-table {
+
+            .payment-details div {
+                margin-bottom: 4px;
+            }
+
+            /* Items Table */
+            .items-table {
                 width: 100%;
                 border-collapse: collapse;
                 margin: 30px 0;
+                font-size: 14px;
             }
-            
-            .modern-template .items-table th {
-                background-color: #2196F3;
+
+            .items-table th {
+                background-color: var(--inv-headerColor, #1E293B);
                 color: white;
-                padding: 12px;
+                padding: 12px 16px;
                 text-align: left;
-                font-weight: normal;
+                font-weight: 600;
                 text-transform: uppercase;
                 font-size: 12px;
+                letter-spacing: 0.5px;
             }
-            
-            .modern-template .items-table td {
-                padding: 10px;
-                border-bottom: 1px solid #eee;
-                font-size: 14px;
+
+            .items-table td {
+                padding: 14px 16px;
+                border-bottom: 1px solid #F1F5F9;
+                color: var(--inv-textColor, #334155);
             }
-            
-            .modern-template .totals-section {
+
+            .items-table tr:last-child td {
+                border-bottom: none;
+            }
+
+            /* Summary Section */
+            .summary-section {
                 display: flex;
-                margin-top: 20px;
+                margin-top: 30px;
             }
-            
-            .modern-template .notes-section {
+
+            .notes-section {
                 width: 60%;
-                padding-right: 20px;
+                padding-right: 30px;
             }
-            
-            .modern-template .notes-label {
-                color: #2196F3;
-                margin-bottom: 10px;
-                font-size: 16px;
-                font-weight: bold;
-            }
-            
-            .modern-template .notes-content {
-                color: #666;
+
+            .notes-content {
                 font-size: 14px;
-                line-height: 1.4;
+                color: var(--inv-textColor, #64748B);
+                line-height: 1.6;
             }
-            
-            .modern-template .amounts-section {
+
+            .amounts-section {
                 width: 40%;
+                background-color: #F8FAFC;
+                padding: 20px;
+                border-radius: 12px;
+            }
+
+            .amount-row {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 12px;
+            }
+
+            .amount-label {
                 font-size: 14px;
+                color: var(--inv-textColor, #64748B);
             }
-            
-            .modern-template .subtotal-row,
-            .modern-template .tax-row {
-                display: flex;
-                justify-content: space-between;
-                margin-bottom: 10px;
+
+            .amount-value {
+                font-size: 14px;
+                font-weight: 600;
+                color: var(--inv-textColor, #1E293B);
             }
-            
-            .modern-template .total-row {
-                display: flex;
-                justify-content: space-between;
-                font-weight: bold;
+
+            .total-row {
+                padding-top: 12px;
+                margin-top: 12px;
+                border-top: 1px solid #E2E8F0;
+            }
+
+            .total-row .amount-label {
+                font-weight: 700;
+            }
+
+            .total-row .amount-value {
                 font-size: 16px;
-                margin-top: 10px;
-                padding-top: 10px;
-                border-top: 1px solid #2196F3;
+                font-weight: 700;
+                color: var(--inv-accentColor, #3B82F6);
             }
-            
-            .modern-template .footer-section {
-                margin-top: auto;
+
+            /* Footer Section */
+            .footer-section {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-end;
+                margin-top: 60px;
                 padding-top: 30px;
-                border-top: 1px solid #eee;
+                border-top: 1px solid #F1F5F9;
             }
-            
-            .modern-template .thank-you {
+
+            .thank-you-message {
+                max-width: 60%;
+            }
+
+            .thank-you {
+                font-size: 15px;
+                font-weight: 600;
+                color: var(--inv-textColor, #1E293B);
+                margin-bottom: 6px;
+            }
+
+            .company-slogan {
+                font-size: 13px;
+                color: var(--inv-textColor, #64748B);
                 font-style: italic;
-                color: #888;
+            }
+
+            .signature-section {
                 text-align: center;
-                margin-bottom: 30px;
-                font-size: 14px;
             }
-            
-            .modern-template .signature-section {
-                text-align: right;
-            }
-            
-            .modern-template .signature-line {
+
+            .signature-line {
                 display: inline-block;
-                width: 200px;
-                border-bottom: 1px solid #333;
-                margin-bottom: 5px;
+                width: 180px;
+                border-bottom: 1px solid #CBD5E1;
+                margin-bottom: 6px;
             }
-            
-            .modern-template .signature-label {
-                font-size: 14px;
-                color: #666;
+
+            .signature-label {
+                font-size: 13px;
+                color: var(--inv-textColor, #64748B);
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
             }
-            
+
             @media print {
-                .modern-template {
+                body {
+                    background: none;
+                }
+                
+                .invoice-paper-temp {
                     box-shadow: none;
                     margin: 0;
                     width: auto;
                     height: auto;
+                    padding: 15mm 20mm;
                 }
             }
         `
     },
     minimal: {
         name: "Minimal Invoice",
-        description: "Simple and clean layout",
+        description: "Ultra-clean layout with essential elements only",
         category: "Minimal",
         html: (data) => `
-        <div class="invoice-paper minimal-template">
+        <div class="invoice-paper-temp minimal-template">
+            <!-- Ultra-minimal Header -->
             <div class="header-section">
-                <div class="company-info">
-                    <div class="company-name">${data.fromAddress.split('\n')[0] || 'Your Company'}</div>
-                    <div class="company-address">${data.fromAddress.replace(/\n/g, '<br>') || 'Address'}</div>
-                    <div class="company-gst">GSTIN: ${data.supplierGst || ''}</div>
-                </div>
+                <div class="company-name">${data.fromAddress.split('\n')[0] || 'Your Company'}</div>
                 <div class="invoice-meta">
-                    <div class="invoice-title">INVOICE</div>
                     <div class="invoice-number">#${data.invoiceNumber || 'INV-001'}</div>
                     <div class="invoice-date">${data.invoiceDate || new Date().toLocaleDateString()}</div>
                 </div>
             </div>
 
+            <!-- Simplified Client Section -->
             <div class="client-section">
-                <div class="bill-to-label">BILL TO:</div>
                 <div class="client-info">
                     <div class="client-name">${data.toAddress.split('\n')[0] || 'Customer'}</div>
                     <div class="client-address">${data.toAddress.replace(/\n/g, '<br>') || 'Address'}</div>
-                    <div class="client-gst">GSTIN: ${data.customerGst || ''}</div>
+                </div>
+                <div class="invoice-details">
+                    <div class="due-date">Due: ${data.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}</div>
+                    <div class="total-amount">₹${(data.subtotal + data.taxAmount).toFixed(2)}</div>
                 </div>
             </div>
 
+            <!-- Essential Items Table -->
             <table class="items-table">
                 <thead>
                     <tr>
-                        <th class="item-no">#</th>
                         <th class="item-desc">Description</th>
                         <th class="item-qty">Qty</th>
-                        <th class="item-rate">Rate</th>
-                        <th class="item-tax">Tax %</th>
                         <th class="item-amount">Amount</th>
                     </tr>
                 </thead>
@@ -889,268 +1169,285 @@ const invoiceTemplates = {
                 </tbody>
             </table>
 
+            <!-- Minimal Totals Section -->
             <div class="totals-section">
-                <div class="notes-section">
-                    <div class="notes-label">Notes</div>
-                    <div class="notes-content">${data.taxDetails || ''}</div>
-                </div>
                 <div class="amounts-section">
-                    <div class="subtotal-row">
-                        <span>Subtotal:</span>
-                        <span>${data.subtotal.toFixed(2)}</span>
+                    <div class="amount-row">
+                        <span>Subtotal</span>
+                        <span>₹${data.subtotal.toFixed(2)}</span>
                     </div>
-                    <div class="tax-row">
-                        <span>Tax:</span>
-                        <span>${data.taxAmount.toFixed(2)}</span>
+                    <div class="amount-row">
+                        <span>Tax</span>
+                        <span>₹${data.taxAmount.toFixed(2)}</span>
                     </div>
-                    <div class="total-row">
-                        <span>Total:</span>
+                    <div class="amount-row total-row">
+                        <span>Total</span>
                         <span>₹${(data.subtotal + data.taxAmount).toFixed(2)}</span>
                     </div>
                 </div>
             </div>
 
+            <!-- Barebones Footer -->
             <div class="footer-section">
-                <div class="thank-you">Thank you for your business!</div>
-                <div class="signature-section">
-                    <div class="signature-line"></div>
-                    <div class="signature-label">Authorized Signature</div>
+                <div class="legal-info">
+                    <div>GSTIN: ${data.supplierGst || 'Not Provided'}</div>
+                    <div>${data.taxDetails || 'Payment due upon receipt'}</div>
                 </div>
             </div>
         </div>
         `,
         styles: `
-            .minimal-template {
-                font-family: 'Arial', sans-serif;
-                color: #333;
-                width: 210mm;
-                min-height: 297mm;
-                margin: 0 auto;
-                background: white;
-                padding: 20mm;
-                box-sizing: border-box;
-                display: flex;
-                flex-direction: column;
+            @page {
+                size: A4;
+                margin: 0;
             }
             
-            .minimal-template .header-section {
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: white;
+            }
+            
+            .invoice-paper-temp {
+                width: 210mm !important;
+                min-height: 297mm !important;
+                margin: 0 auto;
+                padding: var(--inv-topMargin, 25mm) var(--inv-sideMargin, 25mm);
+                background-color: white;
+                color: var(--inv-textColor, #222);
+                font-family: 'Helvetica Neue', Arial, sans-serif;
+                line-height: 1.5;
+            }
+
+            /* Header Section */
+            .header-section {
                 display: flex;
                 justify-content: space-between;
-                margin-bottom: 20px;
-            }
-            
-            .minimal-template .company-name {
-                font-size: 18px;
-                font-weight: bold;
-                margin-bottom: 5px;
-            }
-            
-            .minimal-template .company-address {
-                color: #666;
-                margin-bottom: 5px;
-                line-height: 1.4;
-                font-size: 14px;
-            }
-            
-            .minimal-template .company-gst {
-                font-size: 12px;
-                color: #999;
-            }
-            
-            .minimal-template .invoice-title {
-                font-size: 24px;
-                margin: 0 0 5px 0;
-                text-align: right;
-                font-weight: normal;
-            }
-            
-            .minimal-template .invoice-number {
-                text-align: right;
-                margin-bottom: 3px;
-                font-size: 14px;
-            }
-            
-            .minimal-template .invoice-date {
-                text-align: right;
-                color: #666;
-                font-size: 14px;
-            }
-            
-            .minimal-template .client-section {
-                display: flex;
-                margin: 20px 0;
-                padding: 15px 0;
-                border-top: 1px solid #eee;
+                margin-bottom: 30px;
+                padding-bottom: 15px;
                 border-bottom: 1px solid #eee;
             }
-            
-            .minimal-template .bill-to-label {
-                font-size: 16px;
-                margin-bottom: 10px;
-                color: #666;
-                margin-right: 20px;
-                width: 80px;
+
+            .company-name {
+                font-size: 24px;
+                font-weight: 300;
+                letter-spacing: -0.5px;
             }
-            
-            .minimal-template .client-name {
-                font-weight: bold;
-                margin-bottom: 5px;
-                font-size: 16px;
+
+            .invoice-meta {
+                text-align: right;
             }
-            
-            .minimal-template .client-address {
-                color: #666;
-                margin-bottom: 5px;
-                line-height: 1.4;
+
+            .invoice-number {
+                font-size: 16px;
+                margin-bottom: 3px;
+                color: var(--inv-accentColor, #222);
+            }
+
+            .invoice-date {
                 font-size: 14px;
+                color: #777;
             }
-            
-            .minimal-template .client-gst {
-                font-size: 12px;
-                color: #999;
+
+            /* Client Section */
+            .client-section {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 40px;
             }
-            
-            .minimal-template .items-table {
+
+            .client-name {
+                font-size: 18px;
+                font-weight: 500;
+                margin-bottom: 5px;
+            }
+
+            .client-address {
+                font-size: 14px;
+                color: #777;
+                line-height: 1.6;
+            }
+
+            .invoice-details {
+                text-align: right;
+            }
+
+            .due-date {
+                font-size: 14px;
+                color: #777;
+                margin-bottom: 5px;
+            }
+
+            .total-amount {
+                font-size: 20px;
+                font-weight: 500;
+                color: var(--inv-accentColor, #222);
+            }
+
+            /* Items Table */
+            .items-table {
                 width: 100%;
                 border-collapse: collapse;
-                margin: 20px 0;
+                margin: 0 0 30px 0;
                 font-size: 14px;
             }
-            
-            .minimal-template .items-table th {
+
+            .items-table th {
                 text-align: left;
-                padding: 10px;
+                padding: 8px 0;
                 border-bottom: 1px solid #eee;
-                font-weight: normal;
-                color: #666;
+                font-weight: 500;
+                color: #777;
             }
-            
-            .minimal-template .items-table td {
-                padding: 10px;
+
+            .items-table td {
+                padding: 12px 0;
                 border-bottom: 1px solid #eee;
             }
-            
-            .minimal-template .totals-section {
-                display: flex;
-                margin-top: 20px;
+
+            .items-table tr:last-child td {
+                border-bottom: none;
             }
-            
-            .minimal-template .notes-section {
-                width: 60%;
-                padding-right: 20px;
-            }
-            
-            .minimal-template .notes-label {
-                font-weight: bold;
-                margin-bottom: 10px;
-                font-size: 16px;
-            }
-            
-            .minimal-template .notes-content {
-                color: #666;
-                font-size: 14px;
-                line-height: 1.4;
-            }
-            
-            .minimal-template .amounts-section {
-                width: 40%;
-                font-size: 14px;
-            }
-            
-            .minimal-template .subtotal-row,
-            .minimal-template .tax-row {
-                display: flex;
-                justify-content: space-between;
-                margin-bottom: 10px;
-            }
-            
-            .minimal-template .total-row {
-                display: flex;
-                justify-content: space-between;
-                font-weight: bold;
-                font-size: 16px;
-                margin-top: 10px;
-                padding-top: 10px;
-                border-top: 1px solid #333;
-            }
-            
-            .minimal-template .footer-section {
-                margin-top: auto;
-                padding-top: 30px;
+
+            /* Totals Section */
+            .totals-section {
+                margin-top: 40px;
+                padding-top: 20px;
                 border-top: 1px solid #eee;
             }
-            
-            .minimal-template .thank-you {
-                font-style: italic;
-                text-align: center;
-                margin-bottom: 30px;
-                color: #666;
+
+            .amounts-section {
+                width: 200px;
+                margin-left: auto;
+            }
+
+            .amount-row {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 8px;
                 font-size: 14px;
             }
-            
-            .minimal-template .signature-section {
-                text-align: right;
+
+            .total-row {
+                font-weight: 500;
+                margin-top: 12px;
+                padding-top: 12px;
+                border-top: 1px solid #eee;
+                font-size: 16px;
             }
-            
-            .minimal-template .signature-line {
-                display: inline-block;
-                width: 200px;
-                border-bottom: 1px solid #333;
+
+            .total-row span:last-child {
+                color: var(--inv-accentColor, #222);
+            }
+
+            /* Footer Section */
+            .footer-section {
+                margin-top: 60px;
+                padding-top: 20px;
+                border-top: 1px solid #eee;
+                font-size: 12px;
+                color: #777;
+                text-align: center;
+            }
+
+            .legal-info div {
                 margin-bottom: 5px;
             }
-            
-            .minimal-template .signature-label {
-                font-size: 14px;
-                color: #666;
-            }
-            
+
             @media print {
-                .minimal-template {
+                body {
+                    background: none;
+                }
+                
+                .invoice-paper-temp {
                     box-shadow: none;
                     margin: 0;
                     width: auto;
                     height: auto;
+                    padding: 25mm;
                 }
             }
         `
     },
     professional: {
         name: "Professional Invoice",
-        description: "Corporate style with elegant typography",
+        description: "Corporate design with premium styling",
         category: "Business",
         html: (data) => `
-        <div class="invoice-paper professional-template">
+        <div class="invoice-paper-temp professional-template">
+            <!-- Premium Header with Watermark Effect -->
+            <div class="header-watermark">${data.fromAddress.split('\n')[0] || 'Your Company'}</div>
+            
             <div class="header-section">
                 <div class="company-info">
-                    <div class="company-name">${data.fromAddress.split('\n')[0] || 'Your Company'}</div>
-                    <div class="company-address">${data.fromAddress.replace(/\n/g, '<br>') || 'Address'}</div>
-                    <div class="company-gst">GSTIN: ${data.supplierGst || ''}</div>
+                    <div class="company-branding">
+                        <div class="company-logo-placeholder"></div>
+                        <div class="company-details">
+                            <div class="company-name">${data.fromAddress.split('\n')[0] || 'Your Company'}</div>
+                            <div class="company-tagline">Professional Services</div>
+                        </div>
+                    </div>
+                    <div class="company-address">${data.fromAddress.replace(/\n/g, '<br>') || 'Corporate Headquarters'}</div>
+                    <div class="company-contact">
+                        <div class="company-gst">GSTIN: ${data.supplierGst || 'GSTINXXXXXX'}</div>
+                        <div class="company-phone">+91 XXXXX XXXXX</div>
+                    </div>
                 </div>
+                
                 <div class="invoice-meta">
-                    <div class="invoice-title">INVOICE</div>
-                    <div class="invoice-number">#${data.invoiceNumber || 'INV-001'}</div>
-                    <div class="invoice-date">${data.invoiceDate || new Date().toLocaleDateString()}</div>
+                    <div class="invoice-title-section">
+                        <div class="invoice-title">INVOICE</div>
+                        <div class="invoice-status">ORIGINAL</div>
+                    </div>
+                    <div class="invoice-meta-grid">
+                        <div class="meta-row">
+                            <span class="meta-label">Invoice #</span>
+                            <span class="meta-value invoice-number">${data.invoiceNumber || 'INV-001'}</span>
+                        </div>
+                        <div class="meta-row">
+                            <span class="meta-label">Date</span>
+                            <span class="meta-value">${data.invoiceDate || new Date().toLocaleDateString()}</span>
+                        </div>
+                        <div class="meta-row">
+                            <span class="meta-label">Due Date</span>
+                            <span class="meta-value">${data.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}</span>
+                        </div>
+                        <div class="meta-row">
+                            <span class="meta-label">Terms</span>
+                            <span class="meta-value">Net 30</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
+            <!-- Client Section with Professional Layout -->
             <div class="client-section">
-                <div class="bill-to-label">BILL TO:</div>
                 <div class="client-info">
-                    <div class="client-name">${data.toAddress.split('\n')[0] || 'Customer'}</div>
-                    <div class="client-address">${data.toAddress.replace(/\n/g, '<br>') || 'Address'}</div>
-                    <div class="client-gst">GSTIN: ${data.customerGst || ''}</div>
+                    <div class="section-title">BILL TO</div>
+                    <div class="client-name">${data.toAddress.split('\n')[0] || 'Customer Name'}</div>
+                    <div class="client-address">${data.toAddress.replace(/\n/g, '<br>') || 'Customer Address'}</div>
+                    <div class="client-contact">
+                        <div class="client-gst">GSTIN: ${data.customerGst || 'GSTINXXXXXX'}</div>
+                    </div>
+                </div>
+                
+                <div class="project-info">
+                    <div class="section-title">PROJECT</div>
+                    <div class="project-name">${data.projectName || 'General Services'}</div>
+                    <div class="project-id">PO Number: ${data.poNumber || 'Not Provided'}</div>
                 </div>
             </div>
 
+            <!-- Professional Items Table -->
             <table class="items-table">
                 <thead>
                     <tr>
-                        <th class="item-no">#</th>
-                        <th class="item-desc">Description</th>
-                        <th class="item-qty">Qty</th>
-                        <th class="item-rate">Rate</th>
-                        <th class="item-tax">Tax %</th>
-                        <th class="item-amount">Amount</th>
+                        <th class="item-no">NO.</th>
+                        <th class="item-desc">DESCRIPTION</th>
+                        <th class="item-qty">QTY</th>
+                        <th class="item-rate">UNIT PRICE</th>
+                        <th class="item-tax">TAX %</th>
+                        <th class="item-amount">AMOUNT</th>
                     </tr>
                 </thead>
                 <tbody class="items-body">
@@ -1158,235 +1455,383 @@ const invoiceTemplates = {
                 </tbody>
             </table>
 
-            <div class="totals-section">
+            <!-- Summary Section -->
+            <div class="summary-section">
                 <div class="notes-section">
-                    <div class="notes-label">Notes</div>
-                    <div class="notes-content">${data.taxDetails || ''}</div>
+                    <div class="section-title">TERMS & NOTES</div>
+                    <div class="notes-content">${data.taxDetails || '1. Payment due within 30 days of invoice date<br>2. Late payments subject to 1.5% monthly interest<br>3. Make checks payable to company name'}</div>
                 </div>
+                
                 <div class="amounts-section">
-                    <div class="subtotal-row">
-                        <span>Subtotal:</span>
-                        <span>${data.subtotal.toFixed(2)}</span>
+                    <div class="amount-row subtotal-row">
+                        <span class="amount-label">Subtotal:</span>
+                        <span class="amount-value">₹${data.subtotal.toFixed(2)}</span>
                     </div>
-                    <div class="tax-row">
-                        <span>Tax:</span>
-                        <span>${data.taxAmount.toFixed(2)}</span>
+                    <div class="amount-row tax-row">
+                        <span class="amount-label">Tax (${data.taxRate || 18}%):</span>
+                        <span class="amount-value">₹${data.taxAmount.toFixed(2)}</span>
                     </div>
-                    <div class="total-row">
-                        <span>Total:</span>
-                        <span>₹${(data.subtotal + data.taxAmount).toFixed(2)}</span>
+                    <div class="amount-row discount-row">
+                        <span class="amount-label">Discount:</span>
+                        <span class="amount-value">-₹0.00</span>
+                    </div>
+                    <div class="amount-row total-row">
+                        <span class="amount-label">TOTAL DUE:</span>
+                        <span class="amount-value">₹${(data.subtotal + data.taxAmount).toFixed(2)}</span>
                     </div>
                 </div>
             </div>
 
+            <!-- Corporate Footer -->
             <div class="footer-section">
-                <div class="thank-you">Thank you for your business!</div>
+                <div class="bank-info">
+                    <div class="section-title">BANK INFORMATION</div>
+                    <div class="bank-details">
+                        <div>Bank Name: Corporate Banking</div>
+                        <div>Account No: XXXX-XXXX-XXXX</div>
+                        <div>IFSC Code: XXXX0123456</div>
+                    </div>
+                </div>
                 <div class="signature-section">
-                    <div class="signature-line"></div>
-                    <div class="signature-label">Authorized Signature</div>
+                    <div class="signature-area">
+                        <div class="signature-line"></div>
+                        <div class="signature-label">Authorized Signatory</div>
+                    </div>
+                    <div class="company-stamp">COMPANY STAMP</div>
                 </div>
             </div>
         </div>
         `,
         styles: `
-            .professional-template {
-                font-family: 'Georgia', serif;
-                color: #333;
-                width: 210mm;
-                min-height: 297mm;
-                margin: 0 auto;
-                background: white;
-                padding: 20mm;
-                box-sizing: border-box;
-                display: flex;
-                flex-direction: column;
+            @page {
+                size: A4;
+                margin: 0;
             }
             
-            .professional-template .header-section {
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: #f9f9f9;
+            }
+            
+            .invoice-paper-temp {
+                width: 210mm !important;
+                min-height: 297mm !important;
+                margin: 0 auto;
+                padding: var(--inv-topMargin, 20mm) var(--inv-sideMargin, 25mm);
+                background-color: white;
+                color: var(--inv-textColor, #333333);
+                font-family: 'Calibri', 'Arial', sans-serif;
+                position: relative;
+                overflow: hidden;
+                box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            }
+
+            /* Watermark Effect */
+            .header-watermark {
+                position: absolute;
+                top: 30mm;
+                right: 20mm;
+                font-size: 80px;
+                font-weight: bold;
+                color: rgba(0,0,0,0.03);
+                z-index: 0;
+                transform: rotate(-15deg);
+                white-space: nowrap;
+            }
+
+            /* Header Section */
+            .header-section {
                 display: flex;
                 justify-content: space-between;
                 margin-bottom: 30px;
                 padding-bottom: 20px;
-                border-bottom: 1px solid #ddd;
+                border-bottom: 1px solid #e1e1e1;
+                position: relative;
+                z-index: 1;
             }
-            
-            .professional-template .company-name {
-                font-size: 22px;
-                margin: 0 0 10px 0;
-                font-weight: normal;
-            }
-            
-            .professional-template .company-address {
-                color: #666;
-                margin-bottom: 5px;
-                line-height: 1.4;
-                font-size: 14px;
-            }
-            
-            .professional-template .company-gst {
-                font-size: 13px;
-                color: #888;
-            }
-            
-            .professional-template .invoice-title {
-                font-size: 28px;
-                margin-bottom: 10px;
-                color: #555;
-                text-align: right;
-            }
-            
-            .professional-template .invoice-number {
-                font-size: 16px;
-                text-align: right;
-                margin-bottom: 5px;
-            }
-            
-            .professional-template .invoice-date {
-                font-size: 14px;
-                color: #666;
-                text-align: right;
-            }
-            
-            .professional-template .client-section {
+
+            .company-branding {
                 display: flex;
+                align-items: center;
+                gap: 15px;
+                margin-bottom: 15px;
+            }
+
+            .company-logo-placeholder {
+                width: 50px;
+                height: 50px;
+                background-color: var(--inv-accentColor, #2c5aa0);
+                border-radius: 4px;
+            }
+
+            .company-name {
+                font-size: 24px;
+                font-weight: 600;
+                color: var(--inv-textColor, #222);
+                margin-bottom: 2px;
+            }
+
+            .company-tagline {
+                font-size: 14px;
+                color: var(--inv-textColor, #666);
+                font-weight: 300;
+            }
+
+            .company-address {
+                font-size: 13px;
+                color: var(--inv-textColor, #666);
+                line-height: 1.5;
+                margin-bottom: 10px;
+            }
+
+            .company-contact {
+                font-size: 13px;
+                color: var(--inv-textColor, #666);
+            }
+
+            .invoice-title-section {
+                text-align: right;
+                margin-bottom: 15px;
+            }
+
+            .invoice-title {
+                font-size: 32px;
+                font-weight: 300;
+                color: var(--inv-textColor, #222);
+                margin-bottom: 5px;
+                letter-spacing: 1px;
+            }
+
+            .invoice-status {
+                font-size: 12px;
+                color: white;
+                background-color: var(--inv-accentColor, #2c5aa0);
+                padding: 2px 10px;
+                border-radius: 10px;
+                display: inline-block;
+            }
+
+            .invoice-meta-grid {
+                display: grid;
+                grid-template-columns: auto auto;
+                gap: 8px 15px;
+                text-align: right;
+            }
+
+            .meta-row {
+                display: flex;
+                justify-content: space-between;
+                min-width: 200px;
+            }
+
+            .meta-label {
+                font-size: 13px;
+                color: var(--inv-textColor, #666);
+                font-weight: 300;
+            }
+
+            .meta-value {
+                font-size: 13px;
+                font-weight: 600;
+                color: var(--inv-textColor, #222);
+            }
+
+            .invoice-number {
+                color: var(--inv-accentColor, #2c5aa0);
+            }
+
+            /* Client Section */
+            .client-section {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 30px;
                 margin-bottom: 30px;
-                padding: 15px 0;
-                border-top: 1px solid #ddd;
-                border-bottom: 1px solid #ddd;
+                padding: 20px;
+                background-color: #f8fafc;
+                border-radius: 4px;
             }
-            
-            .professional-template .bill-to-label {
-                font-weight: bold;
-                margin-right: 15px;
-                width: 80px;
-                font-size: 16px;
-            }
-            
-            .professional-template .client-name {
-                font-weight: bold;
-                margin-bottom: 5px;
-                font-size: 16px;
-            }
-            
-            .professional-template .client-address {
-                color: #666;
-                margin-bottom: 5px;
-                line-height: 1.4;
+
+            .section-title {
                 font-size: 14px;
+                font-weight: 600;
+                color: var(--inv-accentColor, #2c5aa0);
+                margin-bottom: 10px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
             }
-            
-            .professional-template .client-gst {
-                font-size: 14px;
-                color: #888;
+
+            .client-name, .project-name {
+                font-size: 16px;
+                font-weight: 600;
+                margin-bottom: 5px;
+                color: var(--inv-textColor, #222);
             }
-            
-            .professional-template .items-table {
+
+            .client-address {
+                font-size: 13px;
+                color: var(--inv-textColor, #666);
+                line-height: 1.5;
+                margin-bottom: 5px;
+            }
+
+            .client-contact, .project-id {
+                font-size: 13px;
+                color: var(--inv-textColor, #666);
+            }
+
+            /* Items Table */
+            .items-table {
                 width: 100%;
                 border-collapse: collapse;
-                margin: 20px 0;
-                font-size: 14px;
+                margin: 25px 0;
+                font-size: 13px;
             }
-            
-            .professional-template .items-table th {
+
+            .items-table th {
+                background-color: var(--inv-headerColor, #2c5aa0);
+                color: white;
+                padding: 12px 15px;
                 text-align: left;
-                padding: 10px;
-                border-bottom: 2px solid #ddd;
-                font-weight: normal;
-                color: #555;
+                font-weight: 600;
+                text-transform: uppercase;
+                font-size: 12px;
+                letter-spacing: 0.5px;
             }
-            
-            .professional-template .items-table td {
-                padding: 10px;
-                border-bottom: 1px solid #eee;
+
+            .items-table td {
+                padding: 12px 15px;
+                border-bottom: 1px solid #f1f1f1;
+                color: var(--inv-textColor, #444);
             }
-            
-            .professional-template .totals-section {
+
+            .items-table tr:last-child td {
+                border-bottom: 2px solid #e1e1e1;
+            }
+
+            /* Summary Section */
+            .summary-section {
                 display: flex;
                 margin-top: 30px;
             }
-            
-            .professional-template .notes-section {
+
+            .notes-section {
                 width: 60%;
-                padding-right: 20px;
+                padding-right: 30px;
             }
-            
-            .professional-template .notes-label {
-                font-size: 16px;
-                color: #555;
-                margin-bottom: 10px;
-                font-weight: bold;
+
+            .notes-content {
+                font-size: 13px;
+                color: var(--inv-textColor, #666);
+                line-height: 1.6;
+                padding: 15px;
+                background-color: #f8fafc;
+                border-radius: 4px;
             }
-            
-            .professional-template .notes-content {
-                color: #666;
-                font-size: 14px;
-                line-height: 1.4;
-            }
-            
-            .professional-template .amounts-section {
+
+            .amounts-section {
                 width: 40%;
-                font-size: 14px;
+                padding-left: 20px;
             }
-            
-            .professional-template .subtotal-row,
-            .professional-template .tax-row {
+
+            .amount-row {
                 display: flex;
                 justify-content: space-between;
                 margin-bottom: 10px;
+                font-size: 13px;
             }
-            
-            .professional-template .total-row {
+
+            .amount-label {
+                color: var(--inv-textColor, #666);
+            }
+
+            .amount-value {
+                font-weight: 600;
+                color: var(--inv-textColor, #222);
+            }
+
+            .total-row {
+                padding-top: 10px;
+                margin-top: 10px;
+                border-top: 1px solid #e1e1e1;
+                font-weight: 600;
+            }
+
+            .total-row .amount-value {
+                font-size: 15px;
+                color: var(--inv-accentColor, #2c5aa0);
+                font-weight: 700;
+            }
+
+            /* Footer Section */
+            .footer-section {
                 display: flex;
                 justify-content: space-between;
-                font-weight: bold;
-                font-size: 16px;
-                padding-top: 10px;
-                border-top: 1px solid #ddd;
+                margin-top: 40px;
+                padding-top: 30px;
+                border-top: 1px solid #e1e1e1;
             }
-            
-            .professional-template .footer-section {
-                margin-top: auto;
-                padding-top: 50px;
-                border-top: 1px solid #ddd;
+
+            .bank-info {
+                width: 60%;
             }
-            
-            .professional-template .thank-you {
-                font-style: italic;
-                color: #888;
+
+            .bank-details {
+                font-size: 13px;
+                color: var(--inv-textColor, #666);
+                line-height: 1.6;
+                margin-top: 10px;
+            }
+
+            .signature-section {
+                width: 30%;
                 text-align: center;
-                margin-bottom: 30px;
-                font-size: 14px;
             }
-            
-            .professional-template .signature-section {
-                text-align: right;
+
+            .signature-area {
+                margin-bottom: 20px;
             }
-            
-            .professional-template .signature-line {
+
+            .signature-line {
                 display: inline-block;
                 width: 200px;
-                border-bottom: 1px solid #333;
+                border-bottom: 1px solid #ccc;
                 margin-bottom: 5px;
             }
-            
-            .professional-template .signature-label {
-                font-size: 14px;
-                color: #555;
+
+            .signature-label {
+                font-size: 13px;
+                color: var(--inv-textColor, #666);
+                text-transform: uppercase;
             }
-            
+
+            .company-stamp {
+                font-size: 12px;
+                color: var(--inv-textColor, #666);
+                border: 1px dashed #ccc;
+                padding: 15px 10px;
+                display: inline-block;
+            }
+
             @media print {
-                .professional-template {
+                body {
+                    background: none;
+                }
+                
+                .invoice-paper-temp {
                     box-shadow: none;
                     margin: 0;
                     width: auto;
                     height: auto;
+                    padding: 20mm 25mm;
                 }
             }
         `
     }
 };
-// Make templates globally available immediately
-window.invoiceTemplates = invoiceTemplates;
+
+
+let selectedTemplate = null;
 
 // Helper function to generate items HTML
 window.generateItemsHtml = function(items) {
@@ -1406,7 +1851,6 @@ window.generateItemsHtml = function(items) {
     return html || '<tr><td colspan="6" class="text-center">No items found</td></tr>';
 };
 
-
 function generateItemsHtml(items) {
     return items.map((item, index) => `
         <tr>
@@ -1419,46 +1863,14 @@ function generateItemsHtml(items) {
         </tr>
     `).join('');
 }
-// Function to render template preview
-function renderTemplatePreview(templateKey) {
+
+// Function to render template preview with custom data
+function renderTemplatePreview(templateKey, data = null) {
     const template = invoiceTemplates[templateKey];
     if (!template) return document.createElement('div');
     
-    // Get current form values
-    const templateData = {
-        fromAddress: $('#fromAddress').val() || '',
-        toAddress: $('#toAddress').val() || '',
-        invoiceNumber: $('#invoiceNumber').val() || 'INV-001',
-        invoiceDate: $('#invoiceDate').val() || new Date().toLocaleDateString(),
-        supplierGst: $('#supplierGst').val() || '',
-        customerGst: $('#customerGst').val() || '',
-        taxDetails: $('#taxDetails').val() || '',
-        subtotal: 0,
-        taxAmount: 0,
-        items: []
-    };
-    
-    // Calculate totals
-    $('#itemsTableBody tr').each(function() {
-        const row = $(this);
-        const qty = parseFloat(row.find('.qty').val()) || 0;
-        const rate = parseFloat(row.find('.rate').val()) || 0;
-        const taxRate = parseFloat(row.find('.tax').val()) || 0;
-        const amount = parseFloat(row.find('.amount').val()) || 0;
-        
-        templateData.items.push({
-            description: row.find('.item-desc').val() || 'Item',
-            quantity: qty,
-            price_per_unit: rate,
-            gst: taxRate,
-            amount: amount
-        });
-        
-        templateData.subtotal += amount / (1 + (taxRate / 100));
-        templateData.taxAmount += amount - (amount / (1 + (taxRate / 100)));
-    });
-    
-    templateData.itemsHtml = generateItemsHtml(templateData.items);
+    // Use provided data or get default preview data
+    const templateData = data || getPreviewData();
     
     // Create a temporary div to hold the template
     const tempDiv = document.createElement('div');
@@ -1500,152 +1912,21 @@ function loadTemplateSelection() {
                 </div>
             </div>
             <div class="template-grid-container">
-                <div class="template-grid">
-                    <!-- Templates will be inserted here -->
-                </div>
+                <div class="template-grid" id="templateGrid"></div>
             </div>
         </div>
     `;
 
-    // Add CSS for the template grid
-    const style = document.createElement('style');
-    style.textContent = `
-        .template-grid-container {
-            padding: 20px;
-            overflow-y: auto;
-            max-height: calc(100vh - 200px);
-        }
-        
-        .template-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 25px;
-            padding: 10px;
-        }
-        
-        .template-card {
-            border: 1px solid #e0e0e0;
-            border-radius: 12px;
-            overflow: hidden;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            background: white;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            height: 450px;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .template-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 6px 16px rgba(0,0,0,0.12);
-        }
-        
-        .template-preview-container {
-            height: 350px;
-            overflow: hidden;
-            position: relative;
-            background: #f9f9f9;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .template-preview {
-            width: 210mm; /* A4 width */
-            height: 297mm; /* A4 height */
-            transform: scale(0.2);
-            transform-origin: top left;
-            box-shadow: 0 0 8px rgba(0,0,0,0.1);
-        }
-        
-        .template-info {
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            flex-grow: 1;
-        }
-        
-        .template-name {
-            font-size: 18px;
-            font-weight: 600;
-            margin: 0 0 5px 0;
-            color: #333;
-        }
-        
-        .template-description {
-            font-size: 14px;
-            color: #666;
-            margin: 0 0 10px 0;
-            flex-grow: 1;
-        }
-        
-        .template-category {
-            display: inline-block;
-            background: #e3f2fd;
-            color: #1976d2;
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 500;
-            margin-bottom: 10px;
-            align-self: flex-start;
-        }
-        
-        .select-template-btn {
-            background: #4285f4;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: background 0.2s;
-            width: 100%;
-        }
-        
-        .select-template-btn:hover {
-            background: #3367d6;
-        }
-        
-        .template-card.selected {
-            border: 2px solid #4285f4;
-            box-shadow: 0 0 0 4px rgba(66, 133, 244, 0.2);
-        }
-    `;
-    document.head.appendChild(style);
-
-    const templateGrid = templateSection.querySelector('.template-grid');
-    if (!templateGrid) return;
-    
-    // Add each template to the grid
+    // Load templates into the grid
+    const templateGrid = document.getElementById('templateGrid');
     Object.keys(invoiceTemplates).forEach(templateKey => {
         const template = invoiceTemplates[templateKey];
+        const previewData = getPreviewData();
         
         const templateCard = document.createElement('div');
         templateCard.className = 'template-card';
         templateCard.dataset.template = templateKey;
         templateCard.dataset.category = template.category;
-        
-        // Create preview data with default values
-        const previewData = {
-            fromAddress: 'Your Company\n123 Business Rd\nCity, State 10001',
-            toAddress: 'Customer Name\n456 Client Ave\nTown, State 20002',
-            invoiceNumber: 'INV-2023-001',
-            invoiceDate: new Date().toLocaleDateString(),
-            supplierGst: '22AAAAA0000A1Z5',
-            customerGst: '33BBBBB0000B2Z6',
-            taxDetails: 'Payment due within 15 days. Late payments subject to 1.5% monthly interest.',
-            subtotal: 1250.00,
-            taxAmount: 225.00,
-            items: [
-                { description: 'Web Design Services', quantity: 10, price_per_unit: 100.00, gst: 18, amount: 1180.00 },
-                { description: 'Domain Registration', quantity: 1, price_per_unit: 70.00, gst: 18, amount: 82.60 }
-            ]
-        };
-        previewData.itemsHtml = generateItemsHtml(previewData.items);
-        
         templateCard.innerHTML = `
             <div class="template-preview-container">
                 <div class="template-preview">
@@ -1661,152 +1942,191 @@ function loadTemplateSelection() {
                 </button>
             </div>
         `;
-        
         templateGrid.appendChild(templateCard);
     });
     
-    // Add filter functionality
-    const filterSelect = document.getElementById('template-filter');
-    if (filterSelect) {
-        filterSelect.addEventListener('change', function() {
-            const filterValue = this.value;
-            document.querySelectorAll('.template-card').forEach(card => {
-                if (filterValue === 'all' || card.dataset.category === filterValue) {
-                    card.style.display = 'flex';
-                } else {
-                    card.style.display = 'none';
-                }
-            });
+    // Set up event listeners
+    setupTemplateSelectionEvents();
+}
+// Set up all event listeners for template selection
+function setupTemplateSelectionEvents() {
+    // Filter functionality
+    document.getElementById('template-filter')?.addEventListener('change', function() {
+        const filterValue = this.value;
+        document.querySelectorAll('.template-card').forEach(card => {
+            card.style.display = (filterValue === 'all' || card.dataset.category === filterValue) ? 'flex' : 'none';
         });
-    }
+    });
     
-    // Add selection handlers
-    document.querySelectorAll('.template-card, .select-template-btn').forEach(element => {
-        element.addEventListener('click', function(e) {
-            // Stop propagation if clicking the button
-            if (e.target.classList.contains('select-template-btn')) {
-                e.stopPropagation();
-            }
-            
-            const card = e.target.closest('.template-card');
-            if (!card) return;
-            
-            const templateKey = card.dataset.template;
+    // Template selection
+    document.querySelectorAll('.select-template-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const templateKey = this.dataset.template;
             selectTemplate(templateKey);
         });
     });
-}
-
-let selectedTemplate = null;
-
-function selectTemplate(templateKey) {
-    selectedTemplate = templateKey;
     
-    // Update UI to show selection
-    document.querySelectorAll('.template-card').forEach(card => {
-        card.classList.remove('selected');
-    });
-    
-    const selectedCard = document.querySelector(`.template-card[data-template="${templateKey}"]`);
-    if (selectedCard) {
-        selectedCard.classList.add('selected');
-    }
-    
-    // Show the "Use Template" button
-    const useBtn = document.getElementById('use-template-btn');
-    if (useBtn) {
-        useBtn.style.display = 'block';
-        useBtn.onclick = function() {
-            applyTemplate(templateKey);
-        };
-    }
-}
-
-function applyTemplate(templateKey) {
-    const template = invoiceTemplates[templateKey];
-    if (!template) {
-        console.error('Template not found:', templateKey);
-        return;
-    }
-
-    // Save the selected template to localStorage
-    localStorage.setItem('selectedInvoiceTemplate', templateKey);
-    
-    // Show success message
-    Swal.fire({
-        title: 'Template Selected!',
-        text: `"${template.name}" template has been applied successfully.`,
-        icon: 'success',
-        confirmButtonText: 'Continue Editing',
-        showCancelButton: true,
-        cancelButtonText: 'View Invoice',
-        reverseButtons: true
-    }).then((result) => {
-        if (result.isDismissed) {
-            // If user clicks "View Invoice", generate and show the invoice
-            generateAndShowInvoice(templateKey);
-        } else {
-            // Continue editing - you might want to update the editor UI
-            updateEditorWithTemplate(templateKey);
+    // Use template button
+    document.getElementById('use-template-btn')?.addEventListener('click', function() {
+        if (selectedTemplate) {
+            applyTemplate(selectedTemplate);
         }
     });
 }
 
-function generateAndShowInvoice(templateKey) {
+// Handle template selection
+function selectTemplate(templateKey) {
+    selectedTemplate = templateKey;
+    
+    // Update UI selection
+    document.querySelectorAll('.template-card').forEach(card => {
+        card.classList.toggle('selected', card.dataset.template === templateKey);
+    });
+    
+    // Show "Use Template" button
+    const useBtn = document.getElementById('use-template-btn');
+    if (useBtn) {
+        useBtn.style.display = 'block';
+    }
+    
+    // Show the preview
+    showTemplatePreview(templateKey);
+}
+
+// Show template preview in modal
+function showTemplatePreview(templateKey) {
+    const template = invoiceTemplates[templateKey];
+    if (!template) return;
+    
+    const previewContainer = document.getElementById('templatePreviewContainer');
+    if (!previewContainer) return;
+    
+    // Clear previous content
+    previewContainer.innerHTML = '';
+    
+    // Create preview with current form data
+    const previewData = getCurrentFormData();
+    const preview = renderTemplatePreview(templateKey, previewData);
+    
+    // Create wrapper for scaling
+    const wrapper = document.createElement('div');
+    wrapper.className = 'template-preview-wrapper';
+    
+    // Create scaled container
+    const scaledContainer = document.createElement('div');
+    scaledContainer.className = 'template-preview-scaled';
+    scaledContainer.appendChild(preview);
+    wrapper.appendChild(scaledContainer);
+    previewContainer.appendChild(wrapper);
+    // Remove any small grid-preview scaling
+    scaledContainer.querySelectorAll('.template-preview').forEach(el => {
+        el.style.transform = 'none';
+    });
+
+    // Function to calculate and apply optimal scale
+    const calculateAndApplyScale = () => {
+        const container = previewContainer;
+        const scaledContainer = container.querySelector('.template-preview-scaled');
+        const invoicePaper = scaledContainer.querySelector('.invoice-paper-temp');
+
+        if (!container || !invoicePaper) return;
+
+        // Natural size from CSS
+        const paperWidth = invoicePaper.offsetWidth;
+        const paperHeight = invoicePaper.offsetHeight;
+
+        // Available space
+        const availableWidth = container.clientWidth - 40;
+        const availableHeight = container.clientHeight - 40;
+
+        // Calculate scale so the whole invoice fits, maintaining aspect ratio
+        const widthScale = availableWidth / paperWidth;
+        const heightScale = availableHeight / paperHeight;
+        const scale = Math.min(widthScale, heightScale);
+
+        scaledContainer.style.transform = `scale(${scale})`;
+        scaledContainer.style.position = 'absolute';
+        scaledContainer.style.left = '50%';
+        scaledContainer.style.top = '50%';
+        scaledContainer.style.transform = `translate(-50%, -50%) scale(${scale})`;
+
+        // Remove scrolls from inner containers
+        container.style.overflow = 'visible';
+        scaledContainer.style.overflow = 'visible';
+    };
+
+    
+    // Calculate scale when the image loads and on window resize
+    const onLoadAndResize = () => setTimeout(calculateAndApplyScale, 50);
+    window.addEventListener('resize', onLoadAndResize);
+    onLoadAndResize();
+    
+    // Set up event listeners
+    window.addEventListener('resize', onLoadAndResize);
+    
+    // Initial calculation
+    onLoadAndResize();
+    
+    // Show the modal
+    const modal = document.getElementById('templatePreviewModal');
+    modal.style.display = 'block';
+    
+    // Clean up event listeners when modal closes
+    const cleanUp = () => {
+        window.removeEventListener('resize', onLoadAndResize);
+    };
+    
+    // Close handlers
+    const closeModal = () => {
+        cleanUp();
+        modal.style.display = 'none';
+    };
+    
+    // Update existing close handlers to include cleanup
+    document.querySelector('.preview-modal-close').onclick = closeModal;
+    document.getElementById('closePreviewBtn').onclick = closeModal;
+}
+
+// Helper function to get preview data
+function getPreviewData() {
+    return {
+        fromAddress: 'Your Company\n123 Business Rd\nCity, State 10001',
+        toAddress: 'Customer Name\n456 Client Ave\nTown, State 20002',
+        invoiceNumber: 'INV-2023-001',
+        invoiceDate: new Date().toLocaleDateString(),
+        supplierGst: '22AAAAA0000A1Z5',
+        customerGst: '33BBBBB0000B2Z6',
+        taxDetails: 'Payment due within 15 days',
+        subtotal: 1250.00,
+        taxAmount: 225.00,
+        items: [
+            { description: 'Web Design', quantity: 10, price_per_unit: 100, gst: 18, amount: 1180 },
+            { description: 'Domain', quantity: 1, price_per_unit: 70, gst: 18, amount: 82.60 }
+        ]
+    };
+}
+
+// Apply the selected template
+function applyTemplate(templateKey) {
     const template = invoiceTemplates[templateKey];
     if (!template) return;
 
-    // Get current form data
-    const templateData = getCurrentFormData();
-    templateData.itemsHtml = generateItemsHtml(templateData.items);
-
-    // Create the invoice HTML
-    const invoiceHtml = template.html(templateData);
+    // Save to localStorage
+    localStorage.setItem('selectedInvoiceTemplate', templateKey);
     
-    // Create a new window to display the invoice
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Invoice Preview</title>
-            <style>
-                body { margin: 0; padding: 0; background: #f5f5f5; }
-                .invoice-container { 
-                    max-width: 800px; 
-                    margin: 20px auto; 
-                    padding: 20px; 
-                    background: white; 
-                    box-shadow: 0 0 10px rgba(0,0,0,0.1);
-                }
-                .actions {
-                    text-align: center;
-                    margin: 20px 0;
-                }
-                button {
-                    padding: 10px 20px;
-                    margin: 0 10px;
-                    background: #4285f4;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    cursor: pointer;
-                }
-                ${template.styles}
-            </style>
-        </head>
-        <body>
-            <div class="actions">
-                <button onclick="window.print()">Print Invoice</button>
-                <button onclick="window.close()">Close</button>
-            </div>
-            <div class="invoice-container">
-                ${invoiceHtml}
-            </div>
-        </body>
-        </html>
-    `);
-    printWindow.document.close();
+    Swal.fire({
+        title: 'Template Selected!',
+        text: `"${template.name}" template has been applied.`,
+        icon: 'success'
+    });
+    
+    // Update the editor view
+    updateEditorWithTemplate(templateKey);
+}
+
+function generateAndShowInvoice(templateKey) {
+    selectTemplate(templateKey);
 }
 
 function getCurrentFormData() {
@@ -1865,42 +2185,251 @@ function updateEditorWithTemplate(templateKey) {
     console.log(`Template "${template.name}" applied to editor`);
 }
 
-// Export for use in other files if needed
-window.templateModule = {
-    loadTemplateSelection,
-    selectTemplate,
-    applyTemplate,
-    getTemplate: (key) => invoiceTemplates[key],
-    renderTemplatePreview,
-    generateItemsHtml
-};
-
 
 // Initialize when the page loads
 document.addEventListener('DOMContentLoaded', function() {
-    // Check if we're on the choose-template page
-    if (document.getElementById('choose-template')) {
+    initPreviewModal();
+    
+    // Handle template selection when clicking the menu item
+    document.querySelector('.sidebar-menu li[onclick*="choose-template"]')?.addEventListener('click', function() {
         loadTemplateSelection();
-    }
-
-    // If there's a selected template in localStorage, apply it
-    const savedTemplate = localStorage.getItem('selectedInvoiceTemplate');
-    if (savedTemplate && invoiceTemplates[savedTemplate]) {
-        updateEditorWithTemplate(savedTemplate);
-    }
+    });
 });
 
 
-function showTemplateSelection() {
-    // Load the template grid
-    templateModule.loadTemplateSelection();
+//CSS for the preview modal
+const previewModalCSS = `
+.preview-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.7);
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.preview-modal-content {
+    background: white;
+    margin: 20px auto;
+    padding: 20px;
+    width: 90%;
+    max-width: 900px;
+    height: calc(100vh - 100px);
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.preview-modal-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    font-size: 24px;
+    cursor: pointer;
+    color: #555;
+    z-index: 2;
+}
+
+.preview-modal-actions {
+    text-align: center;
+    margin-top: 15px;
+    flex-shrink: 0;
+}
+
+.preview-modal-actions button {
+    padding: 8px 16px;
+    margin: 0 10px;
+    background: #4285f4;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.preview-container {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #f9f9f9;
+    position: relative;
+}
+
+.template-preview-wrapper {
+    max-width: 100%;
+    max-height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.preview-container,
+.template-preview-wrapper {
+    overflow: visible;
+}
+
+.template-preview-scaled {
+    transform-origin: center center;
+    box-shadow: 0 0 8px rgba(0,0,0,0.1);
+    background: white;
+}
+`;
+
+// Add this HTML structure for the modal
+const previewModalHTML = `
+<div class="preview-modal" id="templatePreviewModal">
+    <div class="preview-modal-content">
+        <span class="preview-modal-close">&times;</span>
+        <h2>Template Preview</h2>
+        <div class="preview-container" id="templatePreviewContainer"></div>
+        <div class="preview-modal-actions">
+            <button id="printTemplateBtn">Print</button>
+            <button id="useThisTemplateBtn">Use This Template</button>
+            <button id="closePreviewBtn">Close</button>
+        </div>
+    </div>
+</div>
+`;
+
+// Initialize the preview modal
+function initPreviewModal() {
+    // Only add the modal if it doesn't exist
+    if (!document.getElementById('templatePreviewModal')) {
+        // Add CSS
+        const style = document.createElement('style');
+        style.textContent = previewModalCSS;
+        document.head.appendChild(style);
+        
+        // Add HTML
+        document.body.insertAdjacentHTML('beforeend', `
+            <div class="preview-modal" id="templatePreviewModal">
+                <div class="preview-modal-content">
+                    <span class="preview-modal-close">&times;</span>
+                    <h2>Template Preview</h2>
+                    <div class="preview-container" id="templatePreviewContainer"></div>
+                    <div class="preview-modal-actions">
+                        <button id="printTemplateBtn">Print</button>
+                        <button id="useThisTemplateBtn">Use This Template</button>
+                        <button id="closePreviewBtn">Close</button>
+                    </div>
+                </div>
+            </div>
+        `);
+        
+        // Set up modal event listeners
+        const modal = document.getElementById('templatePreviewModal');
+        const closeModal = () => {
+            modal.style.display = 'none';
+        };
+        
+        document.querySelector('.preview-modal-close').addEventListener('click', closeModal);
+        document.getElementById('closePreviewBtn').addEventListener('click', closeModal);
+        document.getElementById('printTemplateBtn').addEventListener('click', printTemplate);
+        document.getElementById('useThisTemplateBtn').addEventListener('click', () => {
+            if (selectedTemplate) {
+                applyTemplate(selectedTemplate);
+                closeModal();
+            }
+        });
+        
+        // Close when clicking outside
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal();
+        });
+    }
+}
+
+// Print the current template
+function printTemplate() {
+    if (!selectedTemplate) return;
     
-    // Highlight the currently selected template
-    const currentTemplate = localStorage.getItem('selectedInvoiceTemplate');
-    if (currentTemplate) {
-        const selectedCard = document.querySelector(`.template-card[data-template="${currentTemplate}"]`);
-        if (selectedCard) {
-            selectedCard.classList.add('selected');
-        }
+    const template = invoiceTemplates[selectedTemplate];
+    const previewData = getCurrentFormData();
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Print Invoice</title>
+            <style>
+                body { margin: 0; padding: 0; }
+                ${template.styles}
+                @page { size: A4; margin: 0; }
+            </style>
+        </head>
+        <body>
+            ${template.html(previewData)}
+            <script>
+                window.onload = function() { 
+                    setTimeout(() => {
+                        window.print();
+                        window.close();
+                    }, 300);
+                }
+            </script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
+
+function initTemplateSelection() {
+    const templateGrid = document.getElementById('templateGrid');
+    if (!templateGrid || templateGrid.children.length > 0) return;
+    
+    // Load templates
+    Object.keys(invoiceTemplates).forEach(templateKey => {
+        const template = invoiceTemplates[templateKey];
+        const previewData = getPreviewData();
+        
+        const templateCard = document.createElement('div');
+        templateCard.className = 'template-card';
+        templateCard.dataset.template = templateKey;
+        templateCard.dataset.category = template.category;
+        templateCard.innerHTML = `
+            <div class="template-preview-container">
+                <div class="template-preview">
+                    ${template.html(previewData)}
+                </div>
+            </div>
+            <div class="template-info">
+                <span class="template-category">${template.category}</span>
+                <h3 class="template-name">${template.name}</h3>
+                <p class="template-description">${template.description}</p>
+                <button class="select-template-btn" data-template="${templateKey}">
+                    Select Template
+                </button>
+            </div>
+        `;
+        templateGrid.appendChild(templateCard);
+    });
+    
+    // Add event listeners
+    document.getElementById('template-filter')?.addEventListener('change', filterTemplates);
+    document.querySelectorAll('.select-template-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            selectTemplate(e.target.dataset.template);
+        });
+    });
+    
+    document.getElementById('use-template-btn')?.addEventListener('click', useSelectedTemplate);
+}
+
+function filterTemplates() {
+    const filterValue = this.value;
+    document.querySelectorAll('.template-card').forEach(card => {
+        card.style.display = (filterValue === 'all' || card.dataset.category === filterValue) ? 'flex' : 'none';
+    });
+}
+
+function useSelectedTemplate() {
+    if (selectedTemplate) {
+        applyTemplate(selectedTemplate);
     }
 }

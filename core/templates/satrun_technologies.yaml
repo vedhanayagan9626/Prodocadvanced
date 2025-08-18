@@ -1,0 +1,35 @@
+vendor: Satrun Technologies
+keywords: ["SATRUN TECHNOLOGIES", "satruntechnologies@hotmail.com", "SATRUNTECHNOLOGIES"]
+fields:
+  invoice_number: "Invoice No[:\\s]*([A-Z0-9-]+)"
+  invoice_date: "Invoice date[:\\s]*([\\d/-]+)"
+  gstin_seller: "GSTIN[:\\s]*([0-9A-Z]+)"
+  gstin_buyer: "GST NO[:\\s]*([0-9A-Z]+)"
+  buyer_name: "Bill to Party\\s*\n(.*?)\n"
+  total_before_tax: "Total Amount before Tax\\s*([\\d,]+.\\d{2})"
+  total_tax: "Total Tax Amount\\s*([\\d,]+.\\d{2})"
+  total_amount: "Total Amount after Tax\\s*([\\d,]+.\\d{2})"
+table:
+  start_keyword: "S. No."
+  end_keyword: "Total"
+  columns:
+    - name: description
+      position: 1
+    - name: hsn
+      position: 2
+    - name: qty
+      position: 3
+    - name: rate
+      position: 4
+    - name: amount
+      position: 5
+    - name: discount
+      position: 6
+    - name: taxable_value
+      position: 7
+    - name: tax_rate
+      position: 8
+    - name: tax_amount
+      position: 9
+    - name: total
+      position: 10

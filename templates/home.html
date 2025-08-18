@@ -10,12 +10,16 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:400,500,700&display=swap">
     <link rel="stylesheet" href="static/css/homestyle.css">
     <link rel="stylesheet" href="static/css/notifications.css">
+    <!-- bootstrap css -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
     <!-- In your HTML head section -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 </head>
 <body>
+    
     <header class="main-header">
     <div class="header-container">
         <!-- Left side - Company logo and name -->
@@ -39,6 +43,33 @@
     </div>
 </header>
 
+<div class="toast-container position-fixed top-0 end-0 p-3">
+  <div id="toast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body">Logging out...</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+</div>
+
+<!-- Logout Confirmation Modal -->
+<div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="logoutModalLabel">Confirm Logout</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to log out?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirmLogoutBtn">Logout</button>
+      </div>
+    </div>
+  </div>
+</div>
 <!-- Main Content Wrapper -->
 <div class="content-wrapper">
     <!-- Sidebar Navigation -->
@@ -56,9 +87,6 @@
             </li>
             <li onclick="showContent('choose-template', event)">
                 <i class="fas fa-clipboard-list" style="color:#43a047"></i> Choose Template
-            </li>
-            <li onclick="showContent('update-template', event)">
-                <i class="fas fa-sync-alt" style="color:#f9ab00"></i> Update Template
             </li>
         </ul>
     </div>
@@ -135,7 +163,7 @@
                             <th>Items</th>
                             <th>Tax Amount</th>
                             <th>Total</th>
-                            <th>Actions</th
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="completed-invoices-body">
@@ -149,23 +177,28 @@
                 </div>
             </div>
         </div>
-
+        
         <!-- Choose Template Content -->
         <div id="choose-template" class="content-section" style="display:none;">
             <div class="card">
                 <div class="content-header">
                     <h2>Choose Template</h2>
+                    <div class="template-controls">
+                        <select id="template-filter" class="filter-select">
+                            <option value="all">All Categories</option>
+                            <option value="Business">Business</option>
+                            <option value="Minimal">Minimal</option>
+                        </select>
+                        <button class="upload-btn" id="use-template-btn">
+                            <i class="fas fa-check"></i> Use Selected Template
+                        </button>
+                    </div>
                 </div>
-                <!-- Add content here -->
-            </div>
-        </div>
-        <!-- Update Template Content -->
-        <div id="update-template" class="content-section" style="display:none;">
-            <div class="card">
-                <div class="content-header">
-                    <h2>Update Template</h2>
+                <div class="template-grid-container">
+                    <div class="template-grid" id="templateGrid">
+                        <!-- Templates will be loaded here by JavaScript -->
+                    </div>
                 </div>
-                <!-- Add content here -->
             </div>
         </div>
     </div>
@@ -184,6 +217,8 @@
         </div>
     </div>
 </footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
         // Check authentication status when page loads
@@ -246,11 +281,44 @@
             `;
             
             // Add logout functionality
+            // Show logout modal when logout button is clicked
             document.getElementById('logout-btn')?.addEventListener('click', function(e) {
                 e.preventDefault();
-                localStorage.removeItem('authToken');
-                window.location.href = '/login';
+                const logoutModal = new bootstrap.Modal(document.getElementById('logoutModal'));
+                logoutModal.show();
             });
+
+            // Handle logout confirmation
+            document.getElementById('confirmLogoutBtn')?.addEventListener('click', function() {
+                localStorage.removeItem('authToken');
+
+                // Hide modal
+                const logoutModalEl = document.getElementById('logoutModal');
+                const modalInstance = bootstrap.Modal.getInstance(logoutModalEl);
+                modalInstance.hide();
+
+                // Show toast
+                showToast("You have been logged out", true, 3000);
+
+                // Redirect after toast delay
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 1500);
+            });
+
+            // Toast function with duration support
+            function showToast(message, isSuccess = true, duration = 1500) {
+                const toastEl = $('#toast');
+                toastEl.removeClass('text-bg-success text-bg-danger')
+                    .addClass(isSuccess ? 'text-bg-success' : 'text-bg-danger')
+                    .find('.toast-body').text(message);
+
+                const toast = new bootstrap.Toast(toastEl[0], {
+                    delay: duration,
+                    autohide: true
+                });
+                toast.show();
+            }
         }
     </script>
     <!-- JS (order matters; FontAwesome must load before) -->

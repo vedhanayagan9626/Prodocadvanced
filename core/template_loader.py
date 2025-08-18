@@ -5,7 +5,7 @@ from core.config import YML_TEMPLATE_DIR
 def load_templates(template_dir= YML_TEMPLATE_DIR):
     templates = []
     for filename in os.listdir(template_dir):
-        if filename.endswith('.yml'):
+        if filename.endswith('.yaml'):
             with open(os.path.join(template_dir, filename)) as f:
                 templates.append(yaml.safe_load(f))
     return templates

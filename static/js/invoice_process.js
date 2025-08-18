@@ -1,3 +1,4 @@
+
 // Initialize PDF.js
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
@@ -13,437 +14,2198 @@ const token = localStorage.getItem('authToken');
 let currentTemplate = 'default';
 let retryCount = 0;
 const MAX_RETRIES = 10;
+const urlParams = new URLSearchParams(window.location.search);
+const previewFilename = urlParams.get('file') || 'invoice.pdf'; // Use uploaded or default
+
+// Invoice Templates
+const invoiceTemplates = {
+    default: {
+        name: "Default invoice",
+        description: "Basic Layout with essential fields",
+        category: "Business",
+        html: (data) => `
+        <div class="invoice-paper-temp default-template">
+            <!-- Header Section -->
+            <div class="header-section">
+                <div class="company-info">
+                    <div class="company-name">${data.fromAddress.split('\n')[0] || 'Your Company'}</div>
+                    <div class="company-address">${data.fromAddress.replace(/\n/g, '<br>') || 'Address'}</div>
+                    <div class="company-gst">GSTIN: ${data.supplierGst || ''}</div>
+                </div>
+                <div class="invoice-meta">
+                    <div class="invoice-title-row">
+                        <span class="invoice-title">TAX INVOICE</span>
+                    </div>
+                    <div class="invoice-number-row">
+                        <span class="invoice-number-label">Invoice No:</span>
+                        <span class="invoice-number">${data.invoiceNumber || 'INV-001'}</span>
+                    </div>
+                    <div class="due-amount-row">
+                        <span class="due-amount-label">Due Amount:</span>
+                        <span class="due-amount">₹${(data.subtotal + data.taxAmount).toFixed(2)}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Client Section -->
+            <div class="client-section">
+                <div class="client-info">
+                    <div class="bill-to-label">BILL TO:</div>
+                    <div class="client-name">${data.toAddress.split('\n')[0] || 'Customer'}</div>
+                    <div class="client-address">${data.toAddress.replace(/\n/g, '<br>') || 'Address'}</div>
+                    <div class="client-gst">GSTIN: ${data.customerGst || ''}</div>
+                </div>
+                <div class="client-meta">
+                    <div class="invoice-date-row">
+                        <span class="invoice-date-label">Invoice Date:</span>
+                        <span class="invoice-date">${data.invoiceDate || new Date().toLocaleDateString()}</span>
+                    </div>
+                    <div class="customer-gst-row">
+                        <span class="customer-gst-label">Customer GSTIN:</span>
+                        <span class="customer-gst">${data.customerGst || 'N/A'}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Items Table -->
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th class="item-no">#</th>
+                        <th class="item-desc">Description</th>
+                        <th class="item-qty">Qty</th>
+                        <th class="item-rate">Rate</th>
+                        <th class="item-tax">Tax %</th>
+                        <th class="item-amount">Amount</th>
+                    </tr>
+                </thead>
+                <tbody class="items-body">
+                    ${generateItemsHtml(data.items)}
+                </tbody>
+            </table>
+
+            <!-- Totals Section -->
+            <div class="totals-section">
+                <div class="notes-section">
+                    <div class="notes-label">Notes</div>
+                    <div class="notes-content">${data.taxDetails || ''}</div>
+                </div>
+                <div class="amounts-section">
+                    <div class="subtotal-row">
+                        <span>Subtotal:</span>
+                        <span>₹${data.subtotal.toFixed(2)}</span>
+                    </div>
+                    <div class="tax-row">
+                        <span>Tax:</span>
+                        <span>₹${data.taxAmount.toFixed(2)}</span>
+                    </div>
+                    <div class="total-row">
+                        <span>Total:</span>
+                        <span>₹${(data.subtotal + data.taxAmount).toFixed(2)}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer-section">
+                <div class="thank-you">Thank you for your business!</div>
+                <div class="signature-section">
+                    <div class="signature-line"></div>
+                    <div class="signature-label">Authorized Signature</div>
+                </div>
+            </div>
+        </div>
+        `,
+        styles: `
+            @page {
+                size: A4;
+                margin: 0;
+            }
+            
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: #f5f5f5;
+                font-family: Arial, sans-serif;
+            }
+            
+            .invoice-paper-temp {
+                width: 210mm !important;
+                min-height: 297mm !important;
+                margin: 0 auto;
+                padding: var(--inv-topMargin, 0.7in) var(--inv-sideMargin, 0.5in);
+                background-color: white;
+                box-sizing: border-box;
+                color: var(--inv-textColor, #333333);
+                font-family: Arial, sans-serif;
+                page-break-inside: avoid;
+            }
+
+            /* Header Section */
+            .header-section {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 30px;
+            }
+
+            .company-info {
+                width: 60%;
+            }
+
+            .invoice-meta {
+                width: 35%;
+                text-align: right;
+            }
+
+            .company-name {
+                font-weight: bold;
+                font-size: 20px;
+                margin-bottom: 8px;
+                color: var(--inv-textColor, #333333);
+            }
+
+            .company-address {
+                font-size: 14px;
+                color: var(--inv-textColor, #333333);
+                margin-bottom: 8px;
+                line-height: 1.4;
+                opacity: 0.8;
+            }
+
+            .company-gst {
+                font-size: 14px;
+                color: var(--inv-textColor, #333333);
+                opacity: 0.8;
+            }
+
+            .invoice-title {
+                font-size: 24px;
+                font-weight: bold;
+                margin-bottom: 10px;
+                color: var(--inv-textColor, #333333);
+            }
+
+            .invoice-number-row, .due-amount-row {
+                margin-bottom: 8px;
+                font-size: 14px;
+            }
+
+            .invoice-number, .due-amount {
+                font-weight: bold;
+                color: var(--inv-accentColor, #2196F3);
+            }
+
+            /* Client Section */
+            .client-section {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 30px;
+                border-top: 1px solid #eee;
+                border-bottom: 1px solid #eee;
+                padding: 15px 0;
+            }
+
+            .client-info {
+                width: 60%;
+            }
+
+            .client-meta {
+                width: 35%;
+                text-align: right;
+            }
+
+            .bill-to-label {
+                font-weight: bold;
+                margin-bottom: 8px;
+            }
+
+            .client-name {
+                font-weight: bold;
+                font-size: 16px;
+                margin-bottom: 8px;
+            }
+
+            .client-address {
+                font-size: 14px;
+                margin-bottom: 8px;
+                line-height: 1.4;
+                opacity: 0.8;
+            }
+
+            .client-gst {
+                font-size: 14px;
+                opacity: 0.8;
+            }
+
+            .invoice-date-row, .customer-gst-row {
+                margin-bottom: 8px;
+                font-size: 14px;
+            }
+
+            .invoice-date-label, .customer-gst-label {
+                opacity: 0.8;
+            }
+
+            /* Items Table */
+            .items-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 15px 0;
+                font-size: 14px;
+            }
+
+            .items-table th {
+                background-color: var(--inv-headerColor, #333333);
+                color: white;
+                text-align: left;
+                padding: 10px;
+                font-weight: normal;
+            }
+
+            .items-table td {
+                border-bottom: 1px solid #ddd;
+                padding: 10px;
+                vertical-align: top;
+            }
+
+            .item-desc {
+                color: var(--inv-textColor, #666666);
+            }
+
+            /* Totals Section */
+            .totals-section {
+                display: flex;
+                margin-top: 20px;
+                margin-bottom: 40px;
+            }
+
+            .notes-section {
+                width: 60%;
+                padding-right: 20px;
+            }
+
+            .notes-label {
+                font-weight: bold;
+                margin-bottom: 10px;
+            }
+
+            .notes-content {
+                font-size: 14px;
+                line-height: 1.4;
+                opacity: 0.8;
+            }
+
+            .amounts-section {
+                width: 40%;
+                font-size: 14px;
+            }
+
+            .subtotal-row,
+            .tax-row,
+            .total-row {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 10px;
+            }
+
+            .total-row {
+                font-weight: bold;
+                font-size: 16px;
+                border-top: 1px solid var(--inv-textColor, #333333);
+                padding-top: 10px;
+                margin-top: 10px;
+            }
+
+            .total-row span:last-child {
+                color: var(--inv-accentColor, #2196F3);
+            }
+
+            /* Footer Section */
+            .footer-section {
+                margin-top: auto;
+                padding-top: 30px;
+                border-top: 1px solid #eee;
+            }
+
+            .thank-you {
+                font-style: italic;
+                text-align: center;
+                margin-bottom: 30px;
+                opacity: 0.8;
+            }
+
+            .signature-section {
+                text-align: right;
+            }
+
+            .signature-line {
+                display: inline-block;
+                width: 200px;
+                border-bottom: 1px solid var(--inv-textColor, #333333);
+                margin-bottom: 5px;
+            }
+
+            .signature-label {
+                font-size: 14px;
+                opacity: 0.8;
+            }
+
+            @media print {
+                body {
+                    background: none;
+                }
+                
+                .invoice-paper-temp {
+                    box-shadow: none;
+                    margin: 0;
+                    width: auto;
+                    height: auto;
+                }
+            }
+        `
+    },
+    classic: {
+        name: "Classic Invoice",
+        description: "Elegant traditional layout with vintage styling",
+        category: "Business",
+        html: (data) => `
+        <div class="invoice-paper-temp classic-template">
+            <!-- Decorative Header -->
+            <div class="decorative-header">
+                <div class="company-logo-placeholder"></div>
+                <div class="header-details">
+                    <div class="invoice-title">TAX INVOICE</div>
+                    <div class="invoice-meta">
+                        <div class="invoice-number-row">
+                            <span class="meta-label">Invoice No:</span>
+                            <span class="invoice-number">${data.invoiceNumber || 'INV-001'}</span>
+                        </div>
+                        <div class="invoice-date-row">
+                            <span class="meta-label">Date:</span>
+                            <span class="invoice-date">${data.invoiceDate || new Date().toLocaleDateString()}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Company and Client Sections -->
+            <div class="main-details-section">
+                <div class="company-info">
+                    <div class="company-name">${data.fromAddress.split('\n')[0] || 'Your Company'}</div>
+                    <div class="company-address">${data.fromAddress.replace(/\n/g, '<br>') || 'Address'}</div>
+                    <div class="company-contact">
+                        <span class="company-gst">GSTIN: ${data.supplierGst || ''}</span>
+                    </div>
+                </div>
+
+                <div class="client-info">
+                    <div class="section-title">BILL TO</div>
+                    <div class="client-name">${data.toAddress.split('\n')[0] || 'Customer'}</div>
+                    <div class="client-address">${data.toAddress.replace(/\n/g, '<br>') || 'Address'}</div>
+                    <div class="client-contact">
+                        <span class="client-gst">GSTIN: ${data.customerGst || ''}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Items Table -->
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th class="item-no">SR</th>
+                        <th class="item-desc">DESCRIPTION</th>
+                        <th class="item-qty">QTY</th>
+                        <th class="item-rate">RATE</th>
+                        <th class="item-tax">TAX %</th>
+                        <th class="item-amount">AMOUNT</th>
+                    </tr>
+                </thead>
+                <tbody class="items-body">
+                    ${generateItemsHtml(data.items)}
+                </tbody>
+            </table>
+
+            <!-- Totals Section -->
+            <div class="totals-section">
+                <div class="notes-section">
+                    <div class="section-title">TERMS & NOTES</div>
+                    <div class="notes-content">${data.taxDetails || 'Payment due within 15 days. Thank you for your business.'}</div>
+                </div>
+                <div class="amounts-section">
+                    <div class="subtotal-row">
+                        <span class="amount-label">Subtotal:</span>
+                        <span class="amount-value">₹${data.subtotal.toFixed(2)}</span>
+                    </div>
+                    <div class="tax-row">
+                        <span class="amount-label">Tax:</span>
+                        <span class="amount-value">₹${data.taxAmount.toFixed(2)}</span>
+                    </div>
+                    <div class="total-row">
+                        <span class="amount-label">Total Amount:</span>
+                        <span class="amount-value">₹${(data.subtotal + data.taxAmount).toFixed(2)}</span>
+                    </div>
+                    <div class="due-amount-row">
+                        <span class="amount-label">Amount Due:</span>
+                        <span class="amount-value">₹${(data.subtotal + data.taxAmount).toFixed(2)}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer-section">
+                <div class="bank-details">
+                    <div class="section-title">BANK DETAILS</div>
+                    <div class="bank-info">
+                        <div>Bank Name: Sample Bank</div>
+                        <div>Account No: 1234567890</div>
+                        <div>IFSC Code: SBIN0000123</div>
+                    </div>
+                </div>
+                <div class="signature-section">
+                    <div class="signature-line"></div>
+                    <div class="signature-label">Authorized Signatory</div>
+                </div>
+            </div>
+        </div>
+        `,
+        styles: `
+            @page {
+                size: A4;
+                margin: 0;
+            }
+            
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: #f9f9f9;
+            }
+            
+            .invoice-paper-temp {
+                width: 210mm !important;
+                min-height: 297mm !important;
+                margin: 0 auto;
+                padding: var(--inv-topMargin, 15mm) var(--inv-sideMargin, 20mm);
+                background-color: white;
+                color: var(--inv-textColor, #333);
+                font-family: 'Times New Roman', serif;
+                box-shadow: 0 0 10px rgba(0,0,0,0.1);
+                position: relative;
+            }
+
+            /* Decorative Header */
+            .decorative-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding-bottom: 15px;
+                margin-bottom: 20px;
+                border-bottom: 2px solid var(--inv-headerColor, #8B4513);
+                position: relative;
+            }
+
+            .decorative-header::after {
+                content: '';
+                position: absolute;
+                bottom: -5px;
+                left: 0;
+                width: 100%;
+                height: 1px;
+                background-color: var(--inv-headerColor, #8B4513);
+                opacity: 0.3;
+            }
+
+            .company-logo-placeholder {
+                width: 80px;
+                height: 80px;
+                border: 1px dashed #ccc;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #999;
+                font-size: 12px;
+            }
+
+            .header-details {
+                text-align: right;
+            }
+
+            .invoice-title {
+                font-size: 28px;
+                font-weight: bold;
+                color: var(--inv-headerColor, #8B4513);
+                margin-bottom: 5px;
+                letter-spacing: 1px;
+            }
+
+            .invoice-meta {
+                font-size: 14px;
+            }
+
+            .invoice-number-row, .invoice-date-row {
+                margin-bottom: 3px;
+            }
+
+            .meta-label {
+                font-weight: bold;
+                margin-right: 5px;
+            }
+
+            .invoice-number {
+                color: var(--inv-accentColor, #8B4513);
+                font-weight: bold;
+            }
+
+            /* Main Details Section */
+            .main-details-section {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 30px;
+            }
+
+            .company-info, .client-info {
+                width: 48%;
+            }
+
+            .section-title {
+                font-weight: bold;
+                font-size: 16px;
+                margin-bottom: 10px;
+                color: var(--inv-headerColor, #8B4513);
+                border-bottom: 1px solid #eee;
+                padding-bottom: 5px;
+            }
+
+            .company-name, .client-name {
+                font-size: 18px;
+                font-weight: bold;
+                margin-bottom: 8px;
+            }
+
+            .company-address, .client-address {
+                font-size: 14px;
+                line-height: 1.5;
+                margin-bottom: 8px;
+            }
+
+            .company-contact, .client-contact {
+                font-size: 14px;
+                font-style: italic;
+            }
+
+            /* Items Table */
+            .items-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 25px 0;
+                font-size: 14px;
+            }
+
+            .items-table th {
+                background-color: var(--inv-headerColor, #8B4513);
+                color: white;
+                padding: 12px 10px;
+                text-align: left;
+                font-weight: normal;
+                border: 1px solid #ddd;
+            }
+
+            .items-table td {
+                padding: 10px;
+                border: 1px solid #ddd;
+            }
+
+            .items-table tr:nth-child(even) {
+                background-color: #f9f9f9;
+            }
+
+            /* Totals Section */
+            .totals-section {
+                display: flex;
+                margin-top: 20px;
+            }
+
+            .notes-section {
+                width: 60%;
+                padding-right: 20px;
+            }
+
+            .notes-content {
+                font-size: 14px;
+                line-height: 1.6;
+                padding: 10px;
+                border: 1px solid #eee;
+                min-height: 100px;
+            }
+
+            .amounts-section {
+                width: 40%;
+                font-size: 14px;
+                border: 1px solid #eee;
+                padding: 15px;
+            }
+
+            .subtotal-row, .tax-row, .total-row, .due-amount-row {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 10px;
+            }
+
+            .total-row, .due-amount-row {
+                font-weight: bold;
+                padding-top: 10px;
+                border-top: 1px solid #ddd;
+            }
+
+            .total-row .amount-value, .due-amount-row .amount-value {
+                color: var(--inv-accentColor, #8B4513);
+                font-size: 16px;
+            }
+
+            /* Footer Section */
+            .footer-section {
+                display: flex;
+                justify-content: space-between;
+                margin-top: 40px;
+                padding-top: 20px;
+                border-top: 2px solid var(--inv-headerColor, #8B4513);
+            }
+
+            .bank-details {
+                width: 60%;
+            }
+
+            .bank-info {
+                font-size: 14px;
+                line-height: 1.6;
+            }
+
+            .signature-section {
+                width: 30%;
+                text-align: center;
+            }
+
+            .signature-line {
+                display: inline-block;
+                width: 200px;
+                border-bottom: 1px solid var(--inv-textColor, #333);
+                margin-bottom: 5px;
+            }
+
+            .signature-label {
+                font-size: 14px;
+                font-weight: bold;
+            }
+
+            @media print {
+                body {
+                    background: none;
+                }
+                
+                .invoice-paper-temp {
+                    box-shadow: none;
+                    margin: 0;
+                    width: auto;
+                    height: auto;
+                    padding: 15mm 20mm;
+                }
+            }
+        `
+    },
+    modern: {
+        name: "Modern Invoice",
+        description: "Sleek contemporary design with clean typography",
+        category: "Business",
+        html: (data) => `
+        <div class="invoice-paper-temp modern-template">
+            <!-- Modern Header with Accent Bar -->
+            <div class="header-accent-bar"></div>
+            
+            <div class="header-section">
+                <div class="company-info">
+                    <div class="company-logo-placeholder">
+                        <span class="logo-initials">${data.fromAddress.split('\n')[0] ? data.fromAddress.split('\n')[0].charAt(0) : 'Y'}</span>
+                    </div>
+                    <div class="company-details">
+                        <div class="company-name">${data.fromAddress.split('\n')[0] || 'Your Company'}</div>
+                        <div class="company-address">${data.fromAddress.replace(/\n/g, '<br>') || 'Address'}</div>
+                        <div class="company-contact">
+                            <span class="company-gst">GSTIN: ${data.supplierGst || ''}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="invoice-meta">
+                    <div class="invoice-title">INVOICE</div>
+                    <div class="invoice-meta-grid">
+                        <div class="meta-label">Invoice #</div>
+                        <div class="meta-value invoice-number">${data.invoiceNumber || 'INV-001'}</div>
+                        
+                        <div class="meta-label">Date Issued</div>
+                        <div class="meta-value">${data.invoiceDate || new Date().toLocaleDateString()}</div>
+                        
+                        <div class="meta-label">Due Date</div>
+                        <div class="meta-value">${data.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}</div>
+                        
+                        <div class="meta-label">Amount Due</div>
+                        <div class="meta-value due-amount">₹${(data.subtotal + data.taxAmount).toFixed(2)}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Client Section with Clean Layout -->
+            <div class="client-section">
+                <div class="client-info">
+                    <div class="section-title with-icon">
+                        <svg class="icon" viewBox="0 0 24 24" width="18" height="18">
+                            <path fill="currentColor" d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z" />
+                        </svg>
+                        <span>CLIENT DETAILS</span>
+                    </div>
+                    <div class="client-name">${data.toAddress.split('\n')[0] || 'Customer'}</div>
+                    <div class="client-address">${data.toAddress.replace(/\n/g, '<br>') || 'Address'}</div>
+                    <div class="client-contact">
+                        <span class="client-gst">GSTIN: ${data.customerGst || ''}</span>
+                    </div>
+                </div>
+                
+                <div class="payment-info">
+                    <div class="section-title with-icon">
+                        <svg class="icon" viewBox="0 0 24 24" width="18" height="18">
+                            <path fill="currentColor" d="M20,8H4V6H20M20,18H4V12H20M20,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6C22,4.89 21.1,4 20,4Z" />
+                        </svg>
+                        <span>PAYMENT METHOD</span>
+                    </div>
+                    <div class="payment-method">Bank Transfer</div>
+                    <div class="payment-details">
+                        <div>Account No: 1234 5678 9012</div>
+                        <div>IFSC: ABCD0123456</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Responsive Items Table -->
+            <div class="table-container">
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th class="item-no">#</th>
+                            <th class="item-desc">ITEM DESCRIPTION</th>
+                            <th class="item-qty">QTY</th>
+                            <th class="item-rate">RATE</th>
+                            <th class="item-tax">TAX</th>
+                            <th class="item-amount">AMOUNT</th>
+                        </tr>
+                    </thead>
+                    <tbody class="items-body">
+                        ${generateItemsHtml(data.items)}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Summary Section -->
+            <div class="summary-section">
+                <div class="notes-section">
+                    <div class="section-title">NOTES</div>
+                    <div class="notes-content">${data.taxDetails || 'Payment due within 15 days. Late payments subject to 1.5% monthly interest.'}</div>
+                </div>
+                
+                <div class="amounts-section">
+                    <div class="amount-row subtotal-row">
+                        <div class="amount-label">Subtotal</div>
+                        <div class="amount-value">₹${data.subtotal.toFixed(2)}</div>
+                    </div>
+                    <div class="amount-row tax-row">
+                        <div class="amount-label">Tax (${data.taxRate || 18}%)</div>
+                        <div class="amount-value">₹${data.taxAmount.toFixed(2)}</div>
+                    </div>
+                    <div class="amount-row discount-row">
+                        <div class="amount-label">Discount</div>
+                        <div class="amount-value">-₹0.00</div>
+                    </div>
+                    <div class="amount-row total-row">
+                        <div class="amount-label">Total Due</div>
+                        <div class="amount-value">₹${(data.subtotal + data.taxAmount).toFixed(2)}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modern Footer -->
+            <div class="footer-section">
+                <div class="thank-you-message">
+                    <div class="thank-you">Thank you for your business!</div>
+                    <div class="company-slogan">Quality products · Professional service</div>
+                </div>
+                <div class="signature-section">
+                    <div class="signature-line"></div>
+                    <div class="signature-label">Authorized Signature</div>
+                </div>
+            </div>
+        </div>
+        `,
+        styles: `
+            @page {
+                size: A4;
+                margin: 0;
+            }
+            
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: #f8fafc;
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            }
+            
+            .invoice-paper-temp {
+                width: 100%;
+                max-width: 210mm;
+                min-height: 297mm;
+                margin: 0 auto;
+                padding: 15mm 5mm;
+                background-color: white;
+                color: var(--inv-textColor, #334155);
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                position: relative;
+                overflow: hidden;
+                box-sizing: border-box;
+            }
+
+            /* Modern Header Styles */
+            .header-accent-bar {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 6px;
+                background-color: var(--inv-accentColor, #3B82F6);
+            }
+
+            .header-section {
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+                margin-bottom: 30px;
+                padding: 20px 10px 0;
+            }
+
+            .company-info {
+                display: flex;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .company-logo-placeholder {
+                flex-shrink: 0;
+                width: 50px;
+                height: 50px;
+                border-radius: 12px;
+                background-color: var(--inv-accentColor, #3B82F6);
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 20px;
+                font-weight: bold;
+            }
+
+            .company-name {
+                font-size: 18px;
+                font-weight: 700;
+                color: var(--inv-textColor, #1E293B);
+                margin-bottom: 6px;
+            }
+
+            .company-address {
+                font-size: 13px;
+                color: var(--inv-textColor, #64748B);
+                line-height: 1.4;
+                margin-bottom: 6px;
+            }
+
+            .company-contact {
+                font-size: 12px;
+                color: var(--inv-textColor, #64748B);
+            }
+
+            .invoice-meta {
+                text-align: left;
+            }
+
+            .invoice-title {
+                font-size: 24px;
+                font-weight: 800;
+                color: var(--inv-textColor, #1E293B);
+                margin-bottom: 10px;
+                letter-spacing: -0.5px;
+            }
+
+            .invoice-meta-grid {
+                display: grid;
+                grid-template-columns: max-content auto;
+                gap: 8px 15px;
+                text-align: right;
+                align-items: center;
+            }
+
+            .meta-label {
+                font-size: 13px;
+                color: var(--inv-textColor, #64748B);
+                font-weight: 500;
+                white-space: nowrap; /* Prevent wrapping */
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .meta-value {
+                font-size: 14px;
+                font-weight: 600;
+                color: var(--inv-textColor, #1E293B);
+                white-space: nowrap; /* Prevent wrapping */
+                text-align: left;
+            }
+
+            .invoice-number, .due-amount {
+                color: var(--inv-accentColor, #3B82F6);
+                font-weight: 700;
+            }
+
+            /* Client Section */
+            .client-section {
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+                margin-bottom: 30px;
+                padding: 20px;
+                background-color: #F8FAFC;
+                border-radius: 12px;
+            }
+
+            .section-title {
+                font-size: 13px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                color: var(--inv-accentColor, #3B82F6);
+                margin-bottom: 10px;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+
+            .client-name {
+                font-size: 15px;
+                font-weight: 600;
+                margin-bottom: 6px;
+                color: var(--inv-textColor, #1E293B);
+            }
+
+            .client-address, .payment-method {
+                font-size: 13px;
+                color: var(--inv-textColor, #64748B);
+                line-height: 1.4;
+                margin-bottom: 6px;
+            }
+
+            .client-contact, .payment-details {
+                font-size: 12px;
+                color: var(--inv-textColor, #64748B);
+            }
+
+            .payment-details div {
+                margin-bottom: 3px;
+            }
+
+            /* Responsive Items Table */
+            .table-container {
+                width: 100%;
+                overflow-x: auto;
+                margin: 20px 0;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .items-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 13px;
+                min-width: 600px;
+            }
+
+            .items-table th {
+                background-color: var(--inv-headerColor, #1E293B);
+                color: white;
+                padding: 10px 12px;
+                text-align: left;
+                font-weight: 600;
+                text-transform: uppercase;
+                font-size: 11px;
+                letter-spacing: 0.5px;
+            }
+
+            .items-table td {
+                padding: 12px;
+                border-bottom: 1px solid #F1F5F9;
+                color: var(--inv-textColor, #334155);
+            }
+
+            .items-table tr:last-child td {
+                border-bottom: none;
+            }
+
+            /* Summary Section */
+            .summary-section {
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+                margin-top: 20px;
+            }
+
+            .notes-section {
+                width: 100%;
+            }
+
+            .notes-content {
+                font-size: 13px;
+                color: var(--inv-textColor, #64748B);
+                line-height: 1.5;
+            }
+
+            .amounts-section {
+                width: 100%;
+                background-color: #F8FAFC;
+                padding: 15px;
+                border-radius: 12px;
+            }
+
+            .amount-row {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 10px;
+            }
+
+            .amount-label {
+                font-size: 13px;
+                color: var(--inv-textColor, #64748B);
+            }
+
+            .amount-value {
+                font-size: 13px;
+                font-weight: 600;
+                color: var(--inv-textColor, #1E293B);
+            }
+
+            .total-row {
+                padding-top: 10px;
+                margin-top: 10px;
+                border-top: 1px solid #E2E8F0;
+            }
+
+            .total-row .amount-label {
+                font-weight: 700;
+            }
+
+            .total-row .amount-value {
+                font-size: 15px;
+                font-weight: 700;
+                color: var(--inv-accentColor, #3B82F6);
+            }
+
+            /* Footer Section */
+            .footer-section {
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+                margin-top: 40px;
+                padding-top: 20px;
+                border-top: 1px solid #F1F5F9;
+            }
+
+            .thank-you-message {
+                width: 100%;
+            }
+
+            .thank-you {
+                font-size: 14px;
+                font-weight: 600;
+                color: var(--inv-textColor, #1E293B);
+                margin-bottom: 6px;
+            }
+
+            .company-slogan {
+                font-size: 12px;
+                color: var(--inv-textColor, #64748B);
+                font-style: italic;
+            }
+
+            .signature-section {
+                text-align: left;
+            }
+
+            .signature-line {
+                display: inline-block;
+                width: 150px;
+                border-bottom: 1px solid #CBD5E1;
+                margin-bottom: 6px;
+            }
+
+            .signature-label {
+                font-size: 12px;
+                color: var(--inv-textColor, #64748B);
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+
+            /* Media Queries for Larger Screens */
+            @media (min-width: 768px) {
+                .invoice-paper-temp {
+                    padding: 15mm 20mm;
+                }
+                
+                .header-section {
+                    flex-direction: row;
+                    justify-content: space-between;
+                    padding-top: 20px;
+                }
+                
+                .invoice-meta {
+                    text-align: right;
+                }
+                
+                .invoice-meta-grid {
+                    text-align: right;
+                }
+                
+                .client-section {
+                    flex-direction: row;
+                    justify-content: space-between; /* Add space between client and payment info */
+                    gap: 30px;
+                }
+
+                .client-info {
+                    flex: 1;
+                    min-width: 0; /* Allow text truncation */
+                }
+                .payment-info {
+                    flex: 1;
+                    min-width: 0; /* Allow text truncation */
+                    text-align: right; /* Align payment info to right */
+                }
+                
+                .summary-section {
+                    flex-direction: row;
+                }
+                
+                .notes-section {
+                    width: 60%;
+                    padding-right: 30px;
+                }
+                
+                .amounts-section {
+                    width: 40%;
+                }
+                
+                .footer-section {
+                    flex-direction: row;
+                    justify-content: space-between;
+                    align-items: flex-end;
+                }
+                
+                .thank-you-message {
+                    max-width: 60%;
+                }
+                
+                .signature-section {
+                    text-align: center;
+                }
+            }
+
+            @media print {
+                body {
+                    background: none;
+                }
+                
+                .invoice-paper-temp {
+                    box-shadow: none;
+                    margin: 0;
+                    width: auto;
+                    height: auto;
+                    padding: 15mm 20mm;
+                }
+                
+                .table-container {
+                    overflow-x: visible;
+                }
+            }
+            /* Ensure client info text doesn't wrap */
+            .client-name,
+            .client-address,
+            .client-contact,
+            .payment-method,
+            .payment-details div {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+        `
+    },
+    minimal: {
+        name: "Minimal Invoice",
+        description: "Ultra-clean layout with essential elements only",
+        category: "Minimal",
+        html: (data) => `
+        <div class="invoice-paper-temp minimal-template">
+            <!-- Ultra-minimal Header -->
+            <div class="header-section">
+                <div class="company-name">${data.fromAddress.split('\n')[0] || 'Your Company'}</div>
+                <div class="invoice-meta">
+                    <div class="invoice-number">#${data.invoiceNumber || 'INV-001'}</div>
+                    <div class="invoice-date">${data.invoiceDate || new Date().toLocaleDateString()}</div>
+                </div>
+            </div>
+
+            <!-- Simplified Client Section -->
+            <div class="client-section">
+                <div class="client-info">
+                    <div class="client-name">${data.toAddress.split('\n')[0] || 'Customer'}</div>
+                    <div class="client-address">${data.toAddress.replace(/\n/g, '<br>') || 'Address'}</div>
+                </div>
+                <div class="invoice-details">
+                    <div class="due-date">Due: ${data.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}</div>
+                    <div class="total-amount">₹${(data.subtotal + data.taxAmount).toFixed(2)}</div>
+                </div>
+            </div>
+
+            <!-- Essential Items Table -->
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th class="item-desc">Description</th>
+                        <th class="item-qty">Qty</th>
+                        <th class="item-amount">Amount</th>
+                    </tr>
+                </thead>
+                <tbody class="items-body">
+                    ${generateItemsHtml(data.items)}
+                </tbody>
+            </table>
+
+            <!-- Minimal Totals Section -->
+            <div class="totals-section">
+                <div class="amounts-section">
+                    <div class="amount-row">
+                        <span>Subtotal</span>
+                        <span>₹${data.subtotal.toFixed(2)}</span>
+                    </div>
+                    <div class="amount-row">
+                        <span>Tax</span>
+                        <span>₹${data.taxAmount.toFixed(2)}</span>
+                    </div>
+                    <div class="amount-row total-row">
+                        <span>Total</span>
+                        <span>₹${(data.subtotal + data.taxAmount).toFixed(2)}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Barebones Footer -->
+            <div class="footer-section">
+                <div class="legal-info">
+                    <div>GSTIN: ${data.supplierGst || 'Not Provided'}</div>
+                    <div>${data.taxDetails || 'Payment due upon receipt'}</div>
+                </div>
+            </div>
+        </div>
+        `,
+        styles: `
+            @page {
+                size: A4;
+                margin: 0;
+            }
+            
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: white;
+            }
+            
+            .invoice-paper-temp {
+                width: 210mm !important;
+                min-height: 297mm !important;
+                margin: 0 auto;
+                padding: var(--inv-topMargin, 25mm) var(--inv-sideMargin, 25mm);
+                background-color: white;
+                color: var(--inv-textColor, #222);
+                font-family: 'Helvetica Neue', Arial, sans-serif;
+                line-height: 1.5;
+            }
+
+            /* Header Section */
+            .header-section {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 30px;
+                padding-bottom: 15px;
+                border-bottom: 1px solid #eee;
+            }
+
+            .company-name {
+                font-size: 24px;
+                font-weight: 300;
+                letter-spacing: -0.5px;
+            }
+
+            .invoice-meta {
+                text-align: right;
+            }
+
+            .invoice-number {
+                font-size: 16px;
+                margin-bottom: 3px;
+                color: var(--inv-accentColor, #222);
+            }
+
+            .invoice-date {
+                font-size: 14px;
+                color: #777;
+            }
+
+            /* Client Section */
+            .client-section {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 40px;
+            }
+
+            .client-name {
+                font-size: 18px;
+                font-weight: 500;
+                margin-bottom: 5px;
+            }
+
+            .client-address {
+                font-size: 14px;
+                color: #777;
+                line-height: 1.6;
+            }
+
+            .invoice-details {
+                text-align: right;
+            }
+
+            .due-date {
+                font-size: 14px;
+                color: #777;
+                margin-bottom: 5px;
+            }
+
+            .total-amount {
+                font-size: 20px;
+                font-weight: 500;
+                color: var(--inv-accentColor, #222);
+            }
+
+            /* Items Table */
+            .items-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 0 0 30px 0;
+                font-size: 14px;
+            }
+
+            .items-table th {
+                text-align: left;
+                padding: 8px 0;
+                border-bottom: 1px solid #eee;
+                font-weight: 500;
+                color: #777;
+            }
+
+            .items-table td {
+                padding: 12px 0;
+                border-bottom: 1px solid #eee;
+            }
+
+            .items-table tr:last-child td {
+                border-bottom: none;
+            }
+
+            /* Totals Section */
+            .totals-section {
+                margin-top: 40px;
+                padding-top: 20px;
+                border-top: 1px solid #eee;
+            }
+
+            .amounts-section {
+                width: 200px;
+                margin-left: auto;
+            }
+
+            .amount-row {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 8px;
+                font-size: 14px;
+            }
+
+            .total-row {
+                font-weight: 500;
+                margin-top: 12px;
+                padding-top: 12px;
+                border-top: 1px solid #eee;
+                font-size: 16px;
+            }
+
+            .total-row span:last-child {
+                color: var(--inv-accentColor, #222);
+            }
+
+            /* Footer Section */
+            .footer-section {
+                margin-top: 60px;
+                padding-top: 20px;
+                border-top: 1px solid #eee;
+                font-size: 12px;
+                color: #777;
+                text-align: center;
+            }
+
+            .legal-info div {
+                margin-bottom: 5px;
+            }
+
+            @media print {
+                body {
+                    background: none;
+                }
+                
+                .invoice-paper-temp {
+                    box-shadow: none;
+                    margin: 0;
+                    width: auto;
+                    height: auto;
+                    padding: 25mm;
+                }
+            }
+        `
+    },
+professional: {
+    name: "Professional Invoice",
+    description: "Corporate design with premium styling",
+    category: "Business",
+    html: (data) => `
+    <div class="invoice-paper-temp professional-template">
+        <!-- Watermark Background -->
+        <div class="header-watermark">${data.fromAddress?.split('\n')[0] || 'Your Company'}</div>
+        
+        <!-- Header Section with Improved Structure -->
+        <div class="header-section">
+            <div class="company-info-block">
+                <div class="company-branding">
+                    <div class="company-logo-placeholder"></div>
+                    <div class="company-text">
+                        <div class="company-name">${data.fromAddress?.split('\n')[0] || 'Your Company'}</div>
+                        <div class="company-tagline">Professional Services</div>
+                    </div>
+                </div>
+                <div class="company-details">
+                    <div class="company-address">${(data.fromAddress || 'Corporate Headquarters').replace(/\n/g, '<br>')}</div>
+                    <div class="company-contact">
+                        <div class="company-gst">GSTIN: ${data.supplierGst || 'GSTINXXXXXX'}</div>
+                        <div class="company-phone">+91 XXXXX XXXXX</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="invoice-meta-block">
+                <div class="invoice-title-block">
+                    <div class="invoice-title">INVOICE</div>
+                    <div class="invoice-status">ORIGINAL</div>
+                </div>
+                <div class="invoice-meta-details">
+                    <div class="meta-row">
+                        <span class="meta-label">Invoice #:</span>
+                        <span class="meta-value invoice-number">${data.invoiceNumber || 'INV-001'}</span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-label">Date:</span>
+                        <span class="meta-value">${data.invoiceDate || new Date().toLocaleDateString()}</span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-label">Due Date:</span>
+                        <span class="meta-value">${data.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}</span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-label">Terms:</span>
+                        <span class="meta-value">Net 30</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Client Section with Improved Layout -->
+        <div class="client-section">
+            <div class="client-info-block">
+                <div class="section-title">BILL TO</div>
+                <div class="client-details">
+                    <div class="client-name">${data.toAddress?.split('\n')[0] || 'Customer Name'}</div>
+                    <div class="client-address">${(data.toAddress || 'Customer Address').replace(/\n/g, '<br>')}</div>
+                    <div class="client-tax">GSTIN: ${data.customerGst || 'GSTINXXXXXX'}</div>
+                </div>
+            </div>
+            
+            <div class="project-info-block">
+                <div class="section-title">PROJECT</div>
+                <div class="project-details">
+                    <div class="project-name">${data.projectName || 'General Services'}</div>
+                    <div class="project-reference">PO Number: ${data.poNumber || 'Not Provided'}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Items Table with Better Responsive Structure -->
+        <div class="table-container">
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th class="item-no">NO.</th>
+                        <th class="item-desc">DESCRIPTION</th>
+                        <th class="item-qty">QTY</th>
+                        <th class="item-rate">UNIT PRICE</th>
+                        <th class="item-tax">TAX %</th>
+                        <th class="item-amount">AMOUNT</th>
+                    </tr>
+                </thead>
+                <tbody class="items-body">
+                    ${generateItemsHtml(data.items)}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Summary Section -->
+        <div class="summary-section">
+            <div class="notes-block">
+                <div class="section-title">TERMS & NOTES</div>
+                <div class="notes-content">${data.taxDetails || '1. Payment due within 30 days<br>2. Late fee of 1.5% monthly interest applies<br>3. Make checks payable to company name'}</div>
+            </div>
+            
+            <div class="amounts-block">
+                <div class="amount-row subtotal-row">
+                    <span class="amount-label">Subtotal:</span>
+                    <span class="amount-value">₹${data.subtotal?.toFixed(2) || '0.00'}</span>
+                </div>
+                <div class="amount-row tax-row">
+                    <span class="amount-label">Tax (${data.taxRate || 18}%):</span>
+                    <span class="amount-value">₹${data.taxAmount?.toFixed(2) || '0.00'}</span>
+                </div>
+                <div class="amount-row total-row">
+                    <span class="amount-label">TOTAL DUE:</span>
+                    <span class="amount-value">₹${(data.subtotal + data.taxAmount)?.toFixed(2) || '0.00'}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Section -->
+        <div class="footer-section">
+            <div class="bank-info-block">
+                <div class="section-title">BANK INFORMATION</div>
+                <div class="bank-details">
+                    <div>Bank Name: Corporate Banking</div>
+                    <div>Account No: XXXX-XXXX-XXXX</div>
+                    <div>IFSC Code: XXXX0123456</div>
+                </div>
+            </div>
+            <div class="signature-block">
+                <div class="signature-area">
+                    <div class="signature-line"></div>
+                    <div class="signature-label">Authorized Signatory</div>
+                </div>
+                <div class="company-stamp">COMPANY STAMP</div>
+            </div>
+        </div>
+    </div>
+    `,
+    styles: `
+        @page {
+            size: A4;
+            margin: 0;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+            font-family: 'Calibri', 'Arial', sans-serif;
+        }
+        
+        .invoice-paper-temp {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            padding: 20mm 25mm;
+            background-color: white;
+            color: #333;
+            position: relative;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+
+        /* Watermark Effect */
+        .header-watermark {
+            position: absolute;
+            top: 30mm;
+            right: 20mm;
+            font-size: 80px;
+            font-weight: bold;
+            color: rgba(0,0,0,0.03);
+            z-index: 0;
+            transform: rotate(-15deg);
+            white-space: nowrap;
+        }
+
+        /* Header Section - Fixed Structure */
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e1e1e1;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .company-info-block {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .invoice-meta-block {
+            flex: 1;
+            min-width: 250px;
+            text-align: right;
+        }
+
+        .company-branding {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .company-logo-placeholder {
+            width: 50px;
+            height: 50px;
+            background-color: #2c5aa0;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .company-text {
+            flex-grow: 1;
+        }
+
+        .company-name {
+            font-size: 22px;
+            font-weight: 600;
+            color: #222;
+            margin-bottom: 2px;
+            line-height: 1.2;
+        }
+
+        .company-tagline {
+            font-size: 14px;
+            color: #666;
+            font-weight: 300;
+        }
+
+        .company-address {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.5;
+            margin-bottom: 5px;
+        }
+
+        .company-contact {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .invoice-title-block {
+            margin-bottom: 15px;
+        }
+
+        .invoice-title {
+            font-size: 28px;
+            font-weight: 300;
+            color: #222;
+            display: inline-block;
+            margin-right: 10px;
+            line-height: 1;
+        }
+
+        .invoice-status {
+            font-size: 12px;
+            color: white;
+            background-color: #2c5aa0;
+            padding: 2px 10px;
+            border-radius: 10px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .invoice-meta-details {
+            display: inline-block;
+            text-align: right;
+        }
+
+        .meta-row {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 5px;
+        }
+
+        .meta-label {
+            font-size: 13px;
+            color: #666;
+            font-weight: 300;
+            margin-right: 10px;
+            min-width: 80px;
+            text-align: right;
+        }
+
+        .meta-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: #222;
+            min-width: 100px;
+            text-align: left;
+        }
+
+        .invoice-number {
+            color: #2c5aa0;
+        }
+
+        /* Client Section - Improved Layout */
+        .client-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #f8fafc;
+            border-radius: 4px;
+        }
+
+        .client-info-block, .project-info-block {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #2c5aa0;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .client-name, .project-name {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #222;
+        }
+
+        .client-address {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.5;
+            margin-bottom: 5px;
+        }
+
+        .client-tax, .project-reference {
+            font-size: 13px;
+            color: #666;
+        }
+
+        /* Items Table - Fixed Structure */
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+            margin: 25px 0;
+        }
+
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            table-layout: fixed;
+        }
+
+        .items-table th {
+            background-color: #2c5aa0;
+            color: white;
+            padding: 12px 10px;
+            text-align: left;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        .items-table td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #f1f1f1;
+            color: #444;
+            word-break: break-word;
+        }
+
+        .items-table tr:last-child td {
+            border-bottom: 2px solid #e1e1e1;
+        }
+
+        /* Column Widths */
+        .item-no { width: 5%; }
+        .item-desc { width: 35%; }
+        .item-qty { width: 10%; }
+        .item-rate { width: 15%; }
+        .item-tax { width: 10%; }
+        .item-amount { width: 15%; text-align: right; }
+
+        /* Summary Section */
+        .summary-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .notes-block {
+            flex: 2;
+            min-width: 300px;
+        }
+
+        .amounts-block {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .notes-content {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.6;
+            padding: 15px;
+            background-color: #f8fafc;
+            border-radius: 4px;
+        }
+
+        .amount-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+
+        .amount-label {
+            color: #666;
+        }
+
+        .amount-value {
+            font-weight: 600;
+            color: #222;
+        }
+
+        .total-row {
+            padding-top: 10px;
+            margin-top: 10px;
+            border-top: 1px solid #e1e1e1;
+            font-weight: 600;
+        }
+
+        .total-row .amount-value {
+            font-size: 15px;
+            color: #2c5aa0;
+            font-weight: 700;
+        }
+
+        /* Footer Section */
+        .footer-section {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 20px;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid #e1e1e1;
+        }
+
+        .bank-info-block {
+            flex: 2;
+            min-width: 300px;
+        }
+
+        .signature-block {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .bank-details {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.6;
+            margin-top: 10px;
+        }
+
+        .signature-area {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .signature-line {
+            display: inline-block;
+            width: 200px;
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 5px;
+        }
+
+        .signature-label {
+            font-size: 13px;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .company-stamp {
+            font-size: 12px;
+            color: #666;
+            border: 1px dashed #ccc;
+            padding: 15px 10px;
+            display: inline-block;
+            text-align: center;
+        }
+
+        @media print {
+            body {
+                background: none;
+            }
+            
+            .invoice-paper-temp {
+                box-shadow: none;
+                margin: 0;
+                width: auto;
+                height: auto;
+                padding: 20mm 25mm;
+            }
+            
+            .header-section, .client-section, .summary-section, .footer-section {
+                break-inside: avoid;
+            }
+            
+            .items-table {
+                page-break-inside: avoid;
+            }
+        }
+    `
+}
+};
+
 
 // High-quality preview system for invoices
 class HighQualityPreview {
-    constructor() {
-        this.state = {
-            scale: 1,
-            minScale: 0.1,
-            maxScale: 5,
-            panX: 0,
-            panY: 0,
-            isDragging: false,
-            startX: 0,
-            startY: 0,
-            lastDistance: 0,
-            element: null,
-            wrapper: null,
-            originalWidth: 0,
-            originalHeight: 0
-        };
-        
-        this.cleanup = null;
-        this.devicePixelRatio = window.devicePixelRatio || 1;
+  constructor(container, element) {
+    this.container = container; // The wrapper div element (e.g., #previewWrapper)
+    this.element = element; // The image or canvas element to pan/zoom
+
+    this.scale = 1;
+    this.minScale = 0.1;
+    this.maxScale = 10;
+    this.translateX = 0;
+    this.translateY = 0;
+    this.isDragging = false;
+
+    this.startX = 0;
+    this.startY = 0;
+
+    this.activePointers = new Map();
+
+    this.element.style.transformOrigin = '0 0';
+    this.element.style.cursor = 'grab';
+
+    this._boundPointerDown = this.onPointerDown.bind(this);
+    this._boundPointerMove = this.onPointerMove.bind(this);
+    this._boundPointerUp = this.onPointerUp.bind(this);
+    this._boundWheel = this.onWheel.bind(this);
+
+    this.initEvents();
+  }
+
+  initEvents() {
+    this.element.addEventListener('pointerdown', this._boundPointerDown);
+    window.addEventListener('pointermove', this._boundPointerMove);
+    window.addEventListener('pointerup', this._boundPointerUp);
+    window.addEventListener('pointercancel', this._boundPointerUp);
+    this.container.addEventListener('wheel', this._boundWheel, { passive: false });
+  }
+
+  dispose() {
+    this.element.removeEventListener('pointerdown', this._boundPointerDown);
+    window.removeEventListener('pointermove', this._boundPointerMove);
+    window.removeEventListener('pointerup', this._boundPointerUp);
+    window.removeEventListener('pointercancel', this._boundPointerUp);
+    this.container.removeEventListener('wheel', this._boundWheel);
+  }
+
+  onPointerDown(ev) {
+    ev.preventDefault();
+    this.activePointers.set(ev.pointerId, ev);
+
+    if (this.activePointers.size === 1) {
+      this.isDragging = true;
+      this.startX = ev.clientX - this.translateX;
+      this.startY = ev.clientY - this.translateY;
+      this.element.style.cursor = 'grabbing';
+    }
+  }
+
+  onPointerMove(ev) {
+    if (!this.isDragging) return;
+    if (!this.activePointers.has(ev.pointerId)) return;
+    
+    ev.preventDefault();
+
+    this.activePointers.set(ev.pointerId, ev);
+
+    if (this.activePointers.size === 1) {
+      const pointer = ev;
+      this.translateX = pointer.clientX - this.startX;
+      this.translateY = pointer.clientY - this.startY;
+      this.applyTransform();
+    }
+  }
+
+  onPointerUp(ev) {
+    if (this.activePointers.has(ev.pointerId)) {
+      this.activePointers.delete(ev.pointerId);
+    }
+    if (this.activePointers.size === 0) {
+      this.isDragging = false;
+      this.element.style.cursor = 'grab';
+    }
+  }
+
+  onWheel(ev) {
+    ev.preventDefault();
+
+    const wheel = ev.deltaY;
+    const zoomFactor = 1.1;
+    let newScale = this.scale;
+
+    if (wheel < 0) {
+      newScale *= zoomFactor;
+    } else {
+      newScale /= zoomFactor;
     }
 
-    // Initialize high-quality image preview
-    initImagePreview(imgElement, wrapper) {
-        return new Promise((resolve, reject) => {
-            if (!imgElement || !wrapper) {
-                reject(new Error('Invalid elements provided'));
-                return;
-            }
+    newScale = Math.min(this.maxScale, Math.max(this.minScale, newScale));
 
-            this.state.element = imgElement;
-            this.state.wrapper = wrapper;
+    const rect = this.element.getBoundingClientRect();
+    const offsetX = ev.clientX - rect.left;
+    const offsetY = ev.clientY - rect.top;
 
-            // Wait for image to load completely
-            const handleImageLoad = () => {
-                // Store original dimensions
-                this.state.originalWidth = imgElement.naturalWidth;
-                this.state.originalHeight = imgElement.naturalHeight;
+    this.translateX -= (offsetX / this.scale) * (newScale - this.scale);
+    this.translateY -= (offsetY / this.scale) * (newScale - this.scale);
 
-                // Set high-quality rendering
-                imgElement.style.imageRendering = 'crisp-edges';
-                imgElement.style.imageRendering = '-webkit-optimize-contrast';
-                imgElement.style.imageRendering = 'pixelated';
-                imgElement.style.imageRendering = 'auto';
-                
-                // Reset any existing transforms
-                imgElement.style.transform = 'none';
-                imgElement.style.transformOrigin = '0 0';
-                
-                // Set initial size to natural dimensions for crisp display
-                imgElement.style.width = `${this.state.originalWidth}px`;
-                imgElement.style.height = `${this.state.originalHeight}px`;
-                imgElement.style.maxWidth = 'none';
-                imgElement.style.maxHeight = 'none';
+    this.scale = newScale;
+    this.applyTransform();
+  }
 
-                // Calculate initial fit-to-screen scale
-                const wrapperRect = wrapper.getBoundingClientRect();
-                const scaleX = (wrapperRect.width * 0.9) / this.state.originalWidth;
-                const scaleY = (wrapperRect.height * 0.9) / this.state.originalHeight;
-                const initialScale = Math.min(scaleX, scaleY, 1);
+  applyTransform() {
+    this.element.style.transform = `translate(${this.translateX}px, ${this.translateY}px) scale(${this.scale})`;
+  }
 
-                // Set initial state
-                this.state.scale = initialScale;
-                this.centerElement(initialScale);
-                
-                // Setup event listeners
-                this.setupEventListeners();
-                
-                resolve();
-            };
+  fitToScreen() {
+    this.translateX = 0;
+    this.translateY = 0;
 
-            if (imgElement.complete && imgElement.naturalWidth > 0) {
-                handleImageLoad();
-            } else {
-                imgElement.onload = handleImageLoad;
-                imgElement.onerror = () => reject(new Error('Failed to load image'));
-            }
-        });
+    const containerWidth = this.container.clientWidth;
+    const containerHeight = this.container.clientHeight;
+
+    let elementWidth, elementHeight;
+
+    if (this.element.tagName.toLowerCase() === 'img') {
+      elementWidth = this.element.naturalWidth;
+      elementHeight = this.element.naturalHeight;
+    } else if (this.element.tagName.toLowerCase() === 'canvas') {
+      elementWidth = this.element.width;
+      elementHeight = this.element.height;
+    } else {
+      elementWidth = this.element.offsetWidth;
+      elementHeight = this.element.offsetHeight;
     }
 
-    // Initialize high-quality PDF preview
-    initPdfPreview(canvas, wrapper, pdfPage) {
-        return new Promise((resolve, reject) => {
-            try {
-                this.state.element = canvas;
-                this.state.wrapper = wrapper;
-
-                // Calculate high-quality viewport
-                const baseScale = 2.0; // Base scale for crisp rendering
-                const viewport = pdfPage.getViewport({ scale: baseScale });
-                
-                // Account for device pixel ratio
-                const outputScale = this.devicePixelRatio;
-                const finalScale = baseScale * outputScale;
-                
-                // Set canvas dimensions
-                canvas.width = Math.floor(viewport.width * outputScale);
-                canvas.height = Math.floor(viewport.height * outputScale);
-                
-                // Set display size (CSS pixels)
-                canvas.style.width = `${viewport.width}px`;
-                canvas.style.height = `${viewport.height}px`;
-                
-                // Store original dimensions
-                this.state.originalWidth = viewport.width;
-                this.state.originalHeight = viewport.height;
-
-                // Get context and scale for high DPI
-                const context = canvas.getContext('2d');
-                context.scale(outputScale, outputScale);
-
-                // Render at high quality
-                const renderContext = {
-                    canvasContext: context,
-                    viewport: pdfPage.getViewport({ scale: baseScale })
-                };
-
-                pdfPage.render(renderContext).promise.then(() => {
-                    // Set up crisp rendering
-                    canvas.style.imageRendering = 'crisp-edges';
-                    canvas.style.transformOrigin = '0 0';
-                    canvas.style.transform = 'none';
-
-                    // Calculate initial fit-to-screen scale
-                    const wrapperRect = wrapper.getBoundingClientRect();
-                    const scaleX = (wrapperRect.width * 0.9) / this.state.originalWidth;
-                    const scaleY = (wrapperRect.height * 0.9) / this.state.originalHeight;
-                    const initialScale = Math.min(scaleX, scaleY, 1);
-
-                    // Set initial state
-                    this.state.scale = initialScale;
-                    this.centerElement(initialScale);
-                    
-                    // Setup event listeners
-                    this.setupEventListeners();
-                    
-                    resolve();
-                }).catch(reject);
-                
-            } catch (error) {
-                reject(error);
-            }
-        });
+    if (elementWidth === 0 || elementHeight === 0) {
+      this.scale = 1;
+    } else {
+      const scaleX = containerWidth / elementWidth;
+      const scaleY = containerHeight / elementHeight;
+      this.scale = Math.min(scaleX, scaleY, 1);
     }
 
-    // Center element in wrapper
-    centerElement(scale = this.state.scale) {
-        const wrapperRect = this.state.wrapper.getBoundingClientRect();
-        const elementWidth = this.state.originalWidth * scale;
-        const elementHeight = this.state.originalHeight * scale;
-        
-        this.state.panX = (wrapperRect.width - elementWidth) / 2;
-        this.state.panY = (wrapperRect.height - elementHeight) / 2;
-        
-        this.applyTransform();
+    this.translateX = (containerWidth - elementWidth * this.scale) / 2;
+    this.translateY = (containerHeight - elementHeight * this.scale) / 2;
+
+    this.applyTransform();
+  }
+
+  // For images, after src is set and loaded
+  initImagePreview() {
+    if (this.element.tagName.toLowerCase() !== 'img') {
+      console.warn('HighQualityPreview: initImagePreview called on non-image element');
+      return;
     }
-
-    // Apply transform with bounds checking
-    applyTransform() {
-        const { element, wrapper, scale, panX, panY, originalWidth, originalHeight } = this.state;
-        
-        if (!element || !wrapper) return;
-
-        const wrapperRect = wrapper.getBoundingClientRect();
-        const scaledWidth = originalWidth * scale;
-        const scaledHeight = originalHeight * scale;
-
-        // Calculate bounds
-        let newPanX = panX;
-        let newPanY = panY;
-
-        // If scaled content is larger than wrapper, allow panning within bounds
-        if (scaledWidth > wrapperRect.width) {
-            const maxPanX = 0;
-            const minPanX = wrapperRect.width - scaledWidth;
-            newPanX = Math.max(minPanX, Math.min(maxPanX, panX));
-        } else {
-            // Center if smaller than wrapper
-            newPanX = (wrapperRect.width - scaledWidth) / 2;
-        }
-
-        if (scaledHeight > wrapperRect.height) {
-            const maxPanY = 0;
-            const minPanY = wrapperRect.height - scaledHeight;
-            newPanY = Math.max(minPanY, Math.min(maxPanY, panY));
-        } else {
-            // Center if smaller than wrapper
-            newPanY = (wrapperRect.height - scaledHeight) / 2;
-        }
-
-        // Update state
-        this.state.panX = newPanX;
-        this.state.panY = newPanY;
-
-        // Apply transform using matrix for better performance
-        element.style.transform = `translate(${newPanX}px, ${newPanY}px) scale(${scale})`;
+    if (!this.element.complete) {
+      this.element.onload = () => {
+        this.fitToScreen();
+      };
+    } else {
+      this.fitToScreen();
     }
+  }
 
-    // Setup all event listeners
-    setupEventListeners() {
-        const { element } = this.state;
-        
-        // Mouse events
-        element.addEventListener('mousedown', this.handleMouseDown.bind(this));
-        document.addEventListener('mousemove', this.handleMouseMove.bind(this));
-        document.addEventListener('mouseup', this.handleMouseUp.bind(this));
-        element.addEventListener('wheel', this.handleWheel.bind(this), { passive: false });
-        element.addEventListener('dblclick', this.handleDoubleClick.bind(this));
-
-        // Touch events
-        element.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false });
-        element.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false });
-        element.addEventListener('touchend', this.handleTouchEnd.bind(this));
-
-        // Prevent context menu
-        element.addEventListener('contextmenu', (e) => e.preventDefault());
-
-        // Window resize
-        window.addEventListener('resize', this.handleResize.bind(this));
-
-        // Set cursor
-        element.style.cursor = 'grab';
-
-        // Store cleanup function
-        this.cleanup = () => {
-            element.removeEventListener('mousedown', this.handleMouseDown.bind(this));
-            document.removeEventListener('mousemove', this.handleMouseMove.bind(this));
-            document.removeEventListener('mouseup', this.handleMouseUp.bind(this));
-            element.removeEventListener('wheel', this.handleWheel.bind(this));
-            element.removeEventListener('dblclick', this.handleDoubleClick.bind(this));
-            element.removeEventListener('touchstart', this.handleTouchStart.bind(this));
-            element.removeEventListener('touchmove', this.handleTouchMove.bind(this));
-            element.removeEventListener('touchend', this.handleTouchEnd.bind(this));
-            element.removeEventListener('contextmenu', (e) => e.preventDefault());
-            window.removeEventListener('resize', this.handleResize.bind(this));
-        };
+  // For PDF canvas previews, you may want to call this after drawing the page on canvas
+  initPdfPreview() {
+    if (this.element.tagName.toLowerCase() !== 'canvas') {
+      console.warn('HighQualityPreview: initPdfPreview called on non-canvas element');
+      return;
     }
-
-    // Mouse event handlers
-    handleMouseDown(e) {
-        if (e.button !== 0) return; // Only left mouse button
-        e.preventDefault();
-        
-        this.state.isDragging = true;
-        this.state.startX = e.clientX - this.state.panX;
-        this.state.startY = e.clientY - this.state.panY;
-        this.state.element.style.cursor = 'grabbing';
-    }
-
-    handleMouseMove(e) {
-        if (!this.state.isDragging) return;
-        
-        this.state.panX = e.clientX - this.state.startX;
-        this.state.panY = e.clientY - this.state.startY;
-        this.applyTransform();
-    }
-
-    handleMouseUp() {
-        this.state.isDragging = false;
-        this.state.element.style.cursor = 'grab';
-    }
-
-    handleWheel(e) {
-        e.preventDefault();
-        
-        const rect = this.state.wrapper.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        
-        // Calculate zoom
-        const zoomIntensity = 0.1;
-        const delta = e.deltaY > 0 ? -zoomIntensity : zoomIntensity;
-        const newScale = Math.min(
-            this.state.maxScale, 
-            Math.max(this.state.minScale, this.state.scale + delta)
-        );
-        
-        // Zoom toward mouse position
-        const scaleRatio = newScale / this.state.scale;
-        this.state.panX = mouseX - (mouseX - this.state.panX) * scaleRatio;
-        this.state.panY = mouseY - (mouseY - this.state.panY) * scaleRatio;
-        this.state.scale = newScale;
-        
-        this.applyTransform();
-    }
-
-    handleDoubleClick() {
-        // Fit to screen
-        const wrapperRect = this.state.wrapper.getBoundingClientRect();
-        const scaleX = (wrapperRect.width * 0.9) / this.state.originalWidth;
-        const scaleY = (wrapperRect.height * 0.9) / this.state.originalHeight;
-        const fitScale = Math.min(scaleX, scaleY, 1);
-        
-        this.state.scale = fitScale;
-        this.centerElement(fitScale);
-    }
-
-    // Touch event handlers
-    handleTouchStart(e) {
-        e.preventDefault();
-        
-        if (e.touches.length === 1) {
-            // Single touch - start dragging
-            this.state.isDragging = true;
-            this.state.startX = e.touches[0].clientX - this.state.panX;
-            this.state.startY = e.touches[0].clientY - this.state.panY;
-        } else if (e.touches.length === 2) {
-            // Two touches - prepare for pinch zoom
-            this.state.isDragging = false;
-            const touch1 = e.touches[0];
-            const touch2 = e.touches[1];
-            this.state.lastDistance = Math.hypot(
-                touch2.clientX - touch1.clientX,
-                touch2.clientY - touch1.clientY
-            );
-        }
-    }
-
-    handleTouchMove(e) {
-        e.preventDefault();
-        
-        if (e.touches.length === 1 && this.state.isDragging) {
-            // Single touch drag
-            this.state.panX = e.touches[0].clientX - this.state.startX;
-            this.state.panY = e.touches[0].clientY - this.state.startY;
-            this.applyTransform();
-        } else if (e.touches.length === 2) {
-            // Pinch zoom
-            const touch1 = e.touches[0];
-            const touch2 = e.touches[1];
-            const currentDistance = Math.hypot(
-                touch2.clientX - touch1.clientX,
-                touch2.clientY - touch1.clientY
-            );
-            
-            if (this.state.lastDistance > 0) {
-                const scaleChange = currentDistance / this.state.lastDistance;
-                const newScale = Math.min(
-                    this.state.maxScale,
-                    Math.max(this.state.minScale, this.state.scale * scaleChange)
-                );
-                
-                // Calculate center between touches
-                const rect = this.state.wrapper.getBoundingClientRect();
-                const centerX = (touch1.clientX + touch2.clientX) / 2 - rect.left;
-                const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
-                
-                // Zoom toward center
-                const scaleRatio = newScale / this.state.scale;
-                this.state.panX = centerX - (centerX - this.state.panX) * scaleRatio;
-                this.state.panY = centerY - (centerY - this.state.panY) * scaleRatio;
-                this.state.scale = newScale;
-                
-                this.applyTransform();
-            }
-            
-            this.state.lastDistance = currentDistance;
-        }
-    }
-
-    handleTouchEnd() {
-        this.state.isDragging = false;
-        this.state.lastDistance = 0;
-    }
-
-    handleResize() {
-        // Recalculate and maintain current view on resize
-        setTimeout(() => {
-            this.applyTransform();
-        }, 100);
-    }
-
-    // Public methods
-    zoomIn() {
-        const newScale = Math.min(this.state.maxScale, this.state.scale + 0.2);
-        this.zoomToCenter(newScale);
-    }
-
-    zoomOut() {
-        const newScale = Math.max(this.state.minScale, this.state.scale - 0.2);
-        this.zoomToCenter(newScale);
-    }
-
-    zoomToCenter(scale) {
-        const rect = this.state.wrapper.getBoundingClientRect();
-        const centerX = rect.width / 2;
-        const centerY = rect.height / 2;
-        
-        const scaleRatio = scale / this.state.scale;
-        this.state.panX = centerX - (centerX - this.state.panX) * scaleRatio;
-        this.state.panY = centerY - (centerY - this.state.panY) * scaleRatio;
-        this.state.scale = scale;
-        
-        this.applyTransform();
-    }
-
-    fitToScreen() {
-        const wrapperRect = this.state.wrapper.getBoundingClientRect();
-        const scaleX = (wrapperRect.width * 0.9) / this.state.originalWidth;
-        const scaleY = (wrapperRect.height * 0.9) / this.state.originalHeight;
-        const fitScale = Math.min(scaleX, scaleY, 1);
-        
-        this.state.scale = fitScale;
-        this.centerElement(fitScale);
-    }
-
-    actualSize() {
-        this.state.scale = 1;
-        this.centerElement(1);
-    }
-
-    destroy() {
-        if (this.cleanup) {
-            this.cleanup();
-        }
-    }
+    this.fitToScreen();
+  }
 }
+
+
 
 // Make essential functions globally available
 window.displayFilePreview = displayFilePreview;
 window.processFile = processFile;
 window.showToast = showToast;
 
-// Main initialization
-$(document).ready(function() {
-    initializeApplication();
-    setupPreviewControls();
-    initializeItemHandlers();
+// DELAY APPEARANCE OF SPINNER (only if load is >350ms)
+let spinnerTimeout = setTimeout(function() {
+  document.getElementById('InvoiceeditorNavglobalSpinnerOverlay').style.display = 'flex';
+}, 350); // Change 350ms to whatever feels "slow" for your app
+
+// Main Initialization
+window.addEventListener('load', function() {
+
+    // HIDE SPINNER WHEN PAGE LOADS
+  clearTimeout(spinnerTimeout); // Cancel spinner if not already shown
+  document.getElementById('InvoiceeditorNavglobalSpinnerOverlay').style.display = 'none';
+
+  // ... your initialization code
+  initializeApplication();
+  setupPreviewControls();
+  initializeItemHandlers();
+  setupPreviewListeners();
 });
+
 
 function initializeApplication() {
     // Initialize jsPDF correctly
@@ -465,9 +2227,9 @@ function initializeApplication() {
     // Set default values
     $('#invoiceNumber').val('INV-' + new Date().getTime());
     $('#invoiceDate').val(new Date().toLocaleDateString());
-    $('#headerColor').val('#333333');
-    $('#textColor').val('#333333');
-    $('#accentColor').val('#2196F3');
+    $('#--inv-headerColor').val('#333333');
+    $('#--inv-textColor').val('#333333');
+    $('#--inv-accentColor').val('#2196F3');
 
     // Initialize event handlers
     $('#uploadForm').on('submit', handleFormSubmit);
@@ -475,36 +2237,27 @@ function initializeApplication() {
     $('#addItemBtn').on('click', handleAddItem);
     
     // Initialize template selection
-    $('#templateSelect').change(function() {
+    $('#templateSelect').change(function () {
         currentTemplate = $(this).val();
-        
-        // Force re-render with the new template
-        if (lastExtractedData) {
-            renderInvoicePreview(lastExtractedData, currentTemplate);
-        } else {
-            renderInvoicePreviewFromForm();
-        }
-        
-        // Update the paper element's class
-        const container = document.getElementById('invoice-preview-container');
-        if (container && !document.getElementById('invoice-paper')) {
-            const paper = document.createElement('div');
-            paper.id = 'invoice-paper';
-            paper.className = 'invoice-paper a4'; // Default size
-            container.appendChild(paper);
+        renderInvoicePreviewFromForm();
+        const paper = document.getElementById('invoice-paper-temp');
+        if (paper) {
+            paper.className = `invoice-paper-temp ${currentTemplate}-template`;
         }
     });
+
 
     // Initialize download buttons
     $('#downloadPdfBtn').on('click', function(e) {
         e.preventDefault();
-        downloadAsPDF();
+        downloadAsPDFWithDialog();
     });
-    
+
     $('#downloadImageBtn').on('click', function(e) {
         e.preventDefault();
-        downloadAsImage();
+        downloadAsImageWithDialog();
     });
+
 
     // Window resize handler
     window.addEventListener('resize', function() {
@@ -525,70 +2278,77 @@ function initializeApplication() {
 
 // Enhanced PDF preview function with high quality
 async function fetchPDFPreview(filename) {
-    const pdfViewer = document.getElementById('pdfViewer');
-    const wrapper = document.getElementById('previewWrapper');
+  const pdfViewer = document.getElementById('pdfViewer');
+  const wrapper = document.getElementById('previewWrapper');
 
-    try {
-        // Clean up previous preview
-        if (currentPreview) {
-            currentPreview.destroy();
-        }
-
-        const response = await fetch(`/api/v1/get-file?filename=${encodeURIComponent(filename)}`);
-        if (!response.ok) throw new Error('Failed to load PDF');
-        
-        const blob = await response.blob();
-        const objectUrl = URL.createObjectURL(blob);
-        
-        const pdf = await pdfjsLib.getDocument(objectUrl).promise;
-        pdfDoc = pdf;
-        
-        const page = await pdf.getPage(1);
-        
-        pdfViewer.style.display = 'block';
-        
-        // Initialize high-quality preview
-        currentPreview = new HighQualityPreview();
-        await currentPreview.initPdfPreview(pdfViewer, wrapper, page);
-        
-        showToast("PDF loaded successfully");
-        
-    } catch (error) {
-        console.error("PDF preview error:", error);
-        showToast("Failed to load PDF preview", false);
+  try {
+    if (currentPreview) {
+      currentPreview.dispose();
+      currentPreview = null;
     }
+
+    const response = await fetch(`/api/v1/get-file?filename=${encodeURIComponent(filename)}`);
+    if (!response.ok) throw new Error('Failed to load PDF');
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+
+    const pdf = await pdfjsLib.getDocument(objectUrl).promise;
+    const page = await pdf.getPage(1);
+
+    // Draw the first page on canvas
+    const viewport = page.getViewport({ scale: 1.5 });
+    pdfViewer.width = viewport.width;
+    pdfViewer.height = viewport.height;
+
+    const renderContext = {
+      canvasContext: pdfViewer.getContext('2d'),
+      viewport: viewport,
+    };
+    await page.render(renderContext).promise;
+
+    pdfViewer.style.display = 'block';
+    document.getElementById('previewImg').style.display = 'none';
+
+    currentPreview = new HighQualityPreview(wrapper, pdfViewer);
+    currentPreview.initPdfPreview();
+    
+    showToast("PDF loaded successfully");
+  } catch (error) {
+    console.error("PDF preview error:", error);
+    showToast("Failed to load PDF preview", false);
+  }
 }
 
 // Enhanced image preview function with high quality
 async function fetchImagePreview(filename) {
-    const previewImg = document.getElementById('previewImg');
-    const wrapper = document.getElementById('previewWrapper');
+  const previewImg = document.getElementById('previewImg');
+  const wrapper = document.getElementById('previewWrapper');
 
-    try {
-        // Clean up previous preview
-        if (currentPreview) {
-            currentPreview.destroy();
-        }
-
-        const response = await fetch(`/api/v1/get-file?filename=${encodeURIComponent(filename)}`);
-        if (!response.ok) throw new Error('Failed to load image');
-        
-        const blob = await response.blob();
-        const objectUrl = URL.createObjectURL(blob);
-        
-        previewImg.src = objectUrl;
-        previewImg.style.display = 'block';
-        
-        // Initialize high-quality preview
-        currentPreview = new HighQualityPreview();
-        await currentPreview.initImagePreview(previewImg, wrapper);
-        
-        showToast("Image loaded successfully");
-        
-    } catch (error) {
-        console.error("Image preview error:", error);
-        showToast("Failed to load image preview", false);
+  try {
+    if (currentPreview) {
+      currentPreview.dispose();
+      currentPreview = null;
     }
+
+    const response = await fetch(`/api/v1/get-file?filename=${encodeURIComponent(filename)}`);
+    if (!response.ok) throw new Error('Failed to load image');
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+
+    previewImg.src = objectUrl;
+    previewImg.style.display = 'block';
+    document.getElementById('pdfViewer').style.display = 'none';
+
+    currentPreview = new HighQualityPreview(wrapper, previewImg);
+    currentPreview.initImagePreview();
+
+    showToast("Image loaded successfully");
+  } catch (error) {
+    console.error("Image preview error:", error);
+    showToast("Failed to load image preview", false);
+  }
 }
 
 // Display file preview with high quality support
@@ -740,7 +2500,7 @@ function createItemRow(item) {
         <td><input type="number" class="form-control form-control-sm rate" value="${rate.toFixed(2)}" data-field="price_per_unit" min="0" step="0.01"></td>
         <td><input type="number" class="form-control form-control-sm tax" value="${taxRate}" data-field="gst" min="0" max="100" step="0.01"></td>
         <td><input type="number" class="form-control form-control-sm amount" value="${amount.toFixed(2)}" data-field="amount" readonly></td>
-        <td class="text-center"><button type="button" class="remove-item-btn">×</button></td>
+        <td class="text-center"><button type="button" class="remove-item-btn" style=" color: red ; border-color: red;  background-color:red 0.4;">×</button></td>
     </tr>`;
 }
 
@@ -824,36 +2584,13 @@ function updateTotals(subtotal, taxAmount) {
     $('#totalQuantity').val(totalQty.toFixed(2));
 }
 
-function renderInvoicePreview(data,currentTemplate) {
-    // Check if templates are loaded
-    if (!window.invoiceTemplates) {
-        if (retryCount++ < MAX_RETRIES) {
-                setTimeout(() => renderInvoicePreview(data), 100);
-            } else {
-                showToast("Failed to load templates", false);
-            }
-        return;
-    }
+function renderInvoicePreview(data, selectedTemplate) {
+    const templateKey = selectedTemplate || currentTemplate || 'default';
+    const template = invoiceTemplates[templateKey] || invoiceTemplates.default;
 
-    // Rest existing renderInvoicePreview code...
-    const template = window.invoiceTemplates[currentTemplate] || window.invoiceTemplates.default
+    const wrapper = document.getElementById('invoice-scale-wrapper');
+    if (!wrapper) return;
 
-    const previewContainer = document.getElementById('invoice-preview-container');
-    if (!previewContainer) {
-        console.error("Preview container not found");
-        return;
-    }
-
-    // Create invoice-paper element if it doesn't exist
-    let paper = document.getElementById('invoice-paper');
-    if (!paper) {
-        paper = document.createElement('div');
-        paper.id = 'invoice-paper';
-        paper.className = 'invoice-paper';
-        previewContainer.appendChild(paper);
-    }
-
-    // Prepare the data structure expected by templates
     const templateData = {
         fromAddress: $('#fromAddress').val() || '',
         toAddress: $('#toAddress').val() || '',
@@ -867,36 +2604,21 @@ function renderInvoicePreview(data,currentTemplate) {
         items: getCurrentItems()
     };
 
-    // Clear previous content and apply template classes
-    paper.innerHTML = '';
-    paper.className = `invoice-paper ${currentTemplate}-template`;
-    
-    // Apply paper size class
-    const paperSize = $('#paperSizeSelect').val().toLowerCase();
-    paper.classList.add(paperSize);
+    wrapper.innerHTML = template.html(templateData);
 
-    // Apply the template HTML
-    paper.innerHTML = template.html(templateData);
+    // Apply styles
+    $('#dynamic-template-styles').remove();
+    $('head').append(`<style id="dynamic-template-styles">${template.styles}</style>`);
 
-    // Apply template-specific styles
-    const styleElement = document.getElementById('dynamic-template-styles');
-    if (styleElement) {
-        styleElement.remove();
-    }
-    document.head.insertAdjacentHTML('beforeend', `<style id="dynamic-template-styles">${template.styles}</style>`);
-
-    // Apply dynamic padding
-    paper.style.padding = `${$('#topMargin').val()}in`;
-
-    // Calculate and apply scaling
+    // Now scale the wrapper instead of scaling only the paper
     setTimeout(() => {
-        const scale = calculateOptimalScale(paper);
-        if (scale) {
-            paper.style.transform = `scale(${scale})`;
-        }
-        updatePreviewColors();
+        const scale = calculateOptimalScale(wrapper.querySelector('.invoice-paper-temp'));
+        wrapper.style.transform = `scale(${scale})`;
     }, 50);
 }
+
+
+
 
 function getCurrentItems() {
     const items = [];
@@ -933,34 +2655,19 @@ function generateItemsHtml(items) {
 
 
 function calculateOptimalScale(paperElement) {
-    if (!paperElement) {
-        console.warn('Paper element not provided for scaling');
-        return 1;
-    }
-
     const container = document.getElementById('invoice-preview-container');
-    if (!container) {
-        console.warn('Preview container not found');
-        return 1;
-    }
+    if (!container || !paperElement) return 1;
 
-    // Force layout calculation if needed
-    const paperWidth = paperElement.offsetWidth || paperElement.getBoundingClientRect().width;
-    const paperHeight = paperElement.offsetHeight || paperElement.getBoundingClientRect().height;
-    
-    if (!paperWidth || !paperHeight) {
-        console.warn('Could not get paper dimensions');
-        return 1;
-    }
+    const paperRect = paperElement.getBoundingClientRect();
+    const availableWidth = container.clientWidth * 0.95; // padding
+    const availableHeight = container.clientHeight * 0.95;
 
-    const containerWidth = container.clientWidth;
-    const containerHeight = container.clientHeight;
+    const widthScale = availableWidth / paperRect.width;
+    const heightScale = availableHeight / paperRect.height;
 
-    const widthScale = (containerWidth * 0.9) / paperWidth;
-    const heightScale = (containerHeight * 0.9) / paperHeight;
-
-    return Math.min(widthScale, heightScale, 1);
+    return Math.min(widthScale, heightScale);
 }
+
 
 function validateTemplate(templateKey) {
     const requiredFields = ['html', 'styles', 'name'];
@@ -1148,9 +2855,9 @@ function handleSaveInvoice() {
     };
     const styling = {
         paperSize: $('#paperSizeSelect').val(),
-        headerColor: $('#headerColor').val(),
-        textColor: $('#textColor').val(),
-        accentColor: $('#accentColor').val(),
+        headerColor: $('#--inv-headerColor').val(),
+        textColor: $('#--inv-textColor').val(),
+        accentColor: $('#--inv-accentColor').val(),
         topMargin: $('#topMargin').val()
     };
 
@@ -1248,13 +2955,19 @@ function updateLastExtractedData(updatedData) {
 }
 
 // UI Functions
-function showToast(message, isSuccess = true) {
+function showToast(message, isSuccess = true, duration = 2000) {
     const toastEl = $('#toast');
     toastEl.removeClass('text-bg-success text-bg-danger')
            .addClass(isSuccess ? 'text-bg-success' : 'text-bg-danger')
            .find('.toast-body').text(message);
-    new bootstrap.Toast(toastEl[0]).show();
+
+    const toast = new bootstrap.Toast(toastEl[0], {
+        delay: duration,  // duration in ms (e.g. 3000 = 3 seconds)
+        autohide: true
+    });
+    toast.show();
 }
+
 
 // Utility Functions
 function resizePreviewArea() {
@@ -1268,51 +2981,51 @@ function resizePreviewArea() {
 
 // Preview Customization Functions
 function setupPreviewControls() {
-    // Paper size change
-    $('#paperSizeSelect').change(function() {
-            const paperSize = $(this).val().toLowerCase();
-            const paper = $('#invoice-paper');
+    // // Paper size change
+    // $('#paperSizeSelect').change(function() {
+    //         const paperSize = $(this).val().toLowerCase();
+    //         const paper = $('#invoice-paper');
             
-            // Remove all paper size classes first
-            paper.removeClass('a4 letter a5');
+    //         // Remove all paper size classes first
+    //         paper.removeClass('a4 letter a5');
             
-            // Add the selected class
-            paper.addClass(paperSize);
+    //         // Add the selected class
+    //         paper.addClass(paperSize);
             
-            // Update dimensions based on selected size
-            switch(paperSize) {
-                case 'a4':
-                    paper.css({
-                        'width': '8.27in',
-                        'min-height': '11.69in'
-                    });
-                    break;
-                case 'letter':
-                    paper.css({
-                        'width': '8.5in',
-                        'min-height': '11in'
-                    });
-                    break;
-                case 'a5':
-                    paper.css({
-                        'width': '5.83in',
-                        'min-height': '8.27in'
-                    });
-                    break;
-            }
+    //         // Update dimensions based on selected size
+    //         switch(paperSize) {
+    //             case 'a4':
+    //                 paper.css({
+    //                     'width': '8.27in',
+    //                     'min-height': '11.69in'
+    //                 });
+    //                 break;
+    //             case 'letter':
+    //                 paper.css({
+    //                     'width': '8.5in',
+    //                     'min-height': '11in'
+    //                 });
+    //                 break;
+    //             case 'a5':
+    //                 paper.css({
+    //                     'width': '5.83in',
+    //                     'min-height': '8.27in'
+    //                 });
+    //                 break;
+    //         }
             
-            // Re-render with new dimensions
-            renderInvoicePreviewFromForm();
+    //         // Re-render with new dimensions
+    //         renderInvoicePreviewFromForm();
             
-            // Adjust preview scaling
-            setTimeout(() => {
-                const scale = calculateOptimalScale(paper[0]);
-                paper.css('transform', `scale(${scale})`);
-            }, 100);
-        });
+    //         // Adjust preview scaling
+    //         setTimeout(() => {
+    //             const scale = calculateOptimalScale(paper[0]);
+    //             paper.css('transform', `scale(${scale})`);
+    //         }, 100);
+    //     });
     
     // Color changes
-    $('#headerColor, #textColor, #accentColor').change(function() {
+    $('#--inv-headerColor, #--inv-textColor, #--inv-accentColor').change(function() {
         updatePreviewColors();
     });
     
@@ -1367,78 +3080,67 @@ function adjustContentForPaperSize() {
 }
 
 function updatePreviewColors() {
-    const headerColor = $('#headerColor').val();
-    const textColor = $('#textColor').val();
-    const accentColor = $('#accentColor').val();
-    
-    const style = `
-        .invoice-content, 
-        .invoice-paper,
-        .invoice-paper .company-info,
-        .invoice-paper .bill-to,
-        .invoice-paper .invoice-details,
-        .invoice-paper .items-table td,
-        .invoice-paper .notes-section,
-        .invoice-paper .footer {
-            color: ${textColor} !important;
-        }
-        .items-table th
-        {
-            background-color: ${headerColor} !important;
-            color: white !important;
-        }
-        .invoice-type{
-        color: ${headerColor} !important;
-        } 
-        .balance-amount, 
-        .total-value b,
-        .invoice-number {
-            color: ${accentColor} !important;
-        }
-    `;
-    
-    $('#dynamic-preview-styles').remove();
-    $('head').append(`<style id="dynamic-preview-styles">${style}</style>`);
+    document.documentElement.style.setProperty('--inv-header-color', $('#--inv-headerColor').val());
+    document.documentElement.style.setProperty('--inv-text-color', $('#--inv-textColor').val());
+    document.documentElement.style.setProperty('--inv-accent-color', $('#--inv-accentColor').val());
+    document.documentElement.style.setProperty('--inv-top-margin', $('#topMargin').val() + 'in');
 }
 
-// Download as PDF
-function downloadAsPDF() {
+// PDF download function with native save dialog in PyWebView
+function downloadAsPDFWithDialog() {
     showToast("Generating PDF...");
     
-    const template = invoiceTemplates[currentTemplate] || invoiceTemplates.default;
+    const templateKey = currentTemplate || 'default';
+    const template = invoiceTemplates[templateKey] || invoiceTemplates.default;
     const templateData = getCurrentFormData();
-    templateData.itemsHtml = generateItemsHtml(templateData.items);
-    
-    // Create a temporary div for PDF generation
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = template.html(templateData);
-    
-    // Set up PDF
-    const pdf = new window.jspdf.jsPDF({
-        orientation: 'portrait',
-        unit: 'in',
-        format: $('#paperSizeSelect').val().toLowerCase()
-    });
-    
-    // Use html2canvas with proper settings
-    html2canvas(tempDiv, {
-        scale: 3,
-        logging: false,
-        useCORS: true,
-        allowTaint: true
-    }).then(canvas => {
-        const imgData = canvas.toDataURL('image/png');
-        const imgWidth = pdf.internal.pageSize.getWidth();
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        
-        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-        pdf.save(`${$('#invoiceNumber').val() || 'invoice'}.pdf`);
-        showToast("PDF downloaded successfully");
-    }).catch(err => {
-        console.error("PDF generation error:", err);
-        showToast("Failed to generate PDF", false);
-    });
+    const fullHtml = template.html(templateData);
+
+    const hiddenContainer = document.createElement('div');
+    hiddenContainer.style.position = 'fixed';
+    hiddenContainer.style.left = '-9999px';
+    hiddenContainer.innerHTML = fullHtml;
+    document.body.appendChild(hiddenContainer);
+
+    const paperEl = hiddenContainer.querySelector('.invoice-paper-temp');
+    if (paperEl) {
+        paperEl.style.width = '210mm';
+        paperEl.style.minHeight = '297mm';
+        paperEl.style.background = '#fff';
+    }
+
+    html2canvas(hiddenContainer, { scale: 3, useCORS: true, backgroundColor: '#fff' })
+        .then(canvas => {
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new window.jspdf.jsPDF();
+            const imgProps = pdf.getImageProperties(imgData);
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+
+            const suggestedPdfName = previewFilename.toLowerCase().endsWith('.pdf') ? previewFilename : previewFilename.replace(/\.[^/.]+$/, '') + '.pdf';
+
+            // Call Python save dialog via PyWebView js_api
+            window.pywebview.api.save_file_dialog(pdf.output('datauristring'), suggestedPdfName)
+                .then(resp => {
+                    if (resp.status === "success") {
+                        showToast("PDF saved to " + resp.path);
+                    } else if (resp.status === "cancelled") {
+                        showToast("Save cancelled", false);
+                    } else {
+                        showToast("Error: " + resp.message, false);
+                    }
+                });
+
+            document.body.removeChild(hiddenContainer);
+            showToast("PDF generated successfully");
+        })
+        .catch(err => {
+            console.error("PDF generation error:", err);
+            showToast("Failed to generate PDF", false);
+        });
 }
+
+
 
 function getCurrentFormData() {
     const data = {
@@ -1478,110 +3180,132 @@ function getCurrentFormData() {
 }
 
 
-function downloadAsImage() {
+// Image download function with native save dialog in PyWebView
+function downloadAsImageWithDialog() {
     showToast("Generating image...");
-    
-    // Create a temporary container with white background
-    const tempContainer = document.createElement('div');
-    tempContainer.style.position = 'absolute';
-    tempContainer.style.left = '-9999px';
-    tempContainer.style.top = '0';
-    tempContainer.style.width = '100%';
-    tempContainer.style.height = '100%';
-    tempContainer.style.backgroundColor = 'white';
-    document.body.appendChild(tempContainer);
-    
-    // Clone the invoice paper and force white background everywhere
-    const paper = document.getElementById('invoice-paper');
-    const clone = paper.cloneNode(true);
-    
-    // Reset all styles that might affect background
-    clone.style.transform = 'none';
-    clone.style.width = '';
-    clone.style.height = '';
-    clone.style.padding = '';
-    clone.style.margin = '';
-    clone.style.backgroundColor = 'white';
-    clone.style.background = 'white';
-    
-    // Apply white background to all child elements
-    $(clone).find('*').each(function() {
-        $(this).css({
-            'background-color': 'white',
-            'background': 'white',
-            'color': '#333' // Ensure text remains dark
-        });
-    });
-    
-    tempContainer.appendChild(clone);
-    
-    // Get paper size
-    const paperSize = $('#paperSizeSelect').val().toLowerCase();
-    let width, height;
-    
-    switch(paperSize) {
-        case 'a4':
-            width = 8.27 * 96; // Convert inches to pixels (96 DPI)
-            height = 11.69 * 96;
-            break;
-        case 'letter':
-            width = 8.5 * 96;
-            height = 11 * 96;
-            break;
-        case 'a5':
-            width = 5.83 * 96;
-            height = 8.27 * 96;
-            break;
-        default:
-            width = 8.27 * 96;
-            height = 11.69 * 96;
+
+    const paperEl = document.querySelector('#invoice-preview-container .invoice-paper-temp');
+    if (!paperEl) {
+        showToast("No invoice to export", false);
+        return;
     }
-    
-    // Set explicit dimensions
-    clone.style.width = `${width}px`;
-    clone.style.height = `${height}px`;
-    
-    // Capture the clone with proper settings
-    html2canvas(clone, {
-        scale: 2, // Higher scale for better quality
-        width: width,
-        height: height,
-        windowWidth: width,
-        windowHeight: height,
-        backgroundColor: 'white',
-        logging: true, // Helpful for debugging
-        useCORS: true,
-        allowTaint: true
-    }).then(canvas => {
-        // Create a final canvas to ensure pure white background
-        const finalCanvas = document.createElement('canvas');
-        finalCanvas.width = canvas.width;
-        finalCanvas.height = canvas.height;
-        const ctx = finalCanvas.getContext('2d');
-        
-        // Fill with white background first
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
-        
-        // Draw the captured content
-        ctx.drawImage(canvas, 0, 0);
-        
-        // Download
-        const link = document.createElement('a');
-        const invoiceNumber = $('#invoiceNumber').val() || 'invoice';
-        link.download = `${invoiceNumber}.png`;
-        link.href = finalCanvas.toDataURL('image/png');
-        link.click();
-        
-        // Clean up
-        document.body.removeChild(tempContainer);
-        showToast("Image downloaded successfully");
-    }).catch(err => {
-        console.error("Image generation error:", err);
-        document.body.removeChild(tempContainer);
-        showToast("Failed to generate image", false);
-    });
+
+    const clone = paperEl.cloneNode(true);
+    clone.style.transform = 'none';
+    clone.style.width = '210mm';
+    clone.style.minHeight = '297mm';
+    clone.style.background = '#fff';
+
+    const tempContainer = document.createElement('div');
+    tempContainer.style.position = 'fixed';
+    tempContainer.style.left = '-9999px';
+    tempContainer.appendChild(clone);
+    document.body.appendChild(tempContainer);
+
+    html2canvas(clone, { scale: 3, backgroundColor: '#fff', useCORS: true })
+        .then(canvas => {
+            const suggestedImageName = previewFilename.replace(/\.[^/.]+$/, '') + '.png';
+
+            const imgBase64 = canvas.toDataURL('image/png');
+
+            window.pywebview.api.save_file_dialog(imgBase64, suggestedImageName)
+                .then(resp => {
+                    if (resp.status === "success") {
+                        showToast("Image saved to " + resp.path);
+                    } else if (resp.status === "cancelled") {
+                        showToast("Save cancelled", false);
+                    } else {
+                        showToast("Error: " + resp.message, false);
+                    }
+                });
+
+            document.body.removeChild(tempContainer);
+            showToast("Image generated successfully");
+        })
+        .catch(err => {
+            console.error("Image generation error:", err);
+            document.body.removeChild(tempContainer);
+            showToast("Failed to generate image", false);
+        });
 }
+
+
+(function() {
+  const container = document.getElementById('invoice-preview-container');
+  const wrapper = document.getElementById('invoice-scale-wrapper');
+
+  if (!container || !wrapper) return;
+
+  let scale = 1;                  // Current zoom scale
+  let panX = 0;                  // Current horizontal pan offset
+  let panY = 0;                  // Current vertical pan offset
+
+  let isDragging = false;
+  let dragStartX = 0;
+  let dragStartY = 0;
+
+  // Apply the transform with scale and pan offsets
+  function updateTransform() {
+    wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+  }
+
+  // Zoom with mouse wheel
+  container.addEventListener('wheel', (event) => {
+    event.preventDefault();
+
+    // Zoom delta, with sensitivity adjustment
+    const zoomSensitivity = 0.001;
+    const delta = -event.deltaY * zoomSensitivity;
+    let newScale = scale + delta;
+
+    // Clamp scale to reasonable zoom levels
+    newScale = Math.min(Math.max(newScale, 0.5), 3);
+
+    // Get mouse position relative to the wrapper
+    const rect = wrapper.getBoundingClientRect();
+    const offsetX = event.clientX - rect.left;
+    const offsetY = event.clientY - rect.top;
+
+    // Calculate pan adjustment to zoom at pointer
+    panX -= (offsetX / scale) * (newScale - scale);
+    panY -= (offsetY / scale) * (newScale - scale);
+
+    scale = newScale;
+
+    updateTransform();
+  });
+
+  // Start panning on mouse down
+  container.addEventListener('mousedown', (event) => {
+    isDragging = true;
+    dragStartX = event.clientX - panX;
+    dragStartY = event.clientY - panY;
+    wrapper.style.transition = 'none'; // disable transition while dragging
+    event.preventDefault();
+  });
+
+  // Panning mouse move
+  window.addEventListener('mousemove', (event) => {
+    if (!isDragging) return;
+    panX = event.clientX - dragStartX;
+    panY = event.clientY - dragStartY;
+    updateTransform();
+  });
+
+  // End panning on mouse up or leaving window
+  window.addEventListener('mouseup', () => {
+    if (!isDragging) return;
+    isDragging = false;
+    wrapper.style.transition = 'transform 0.1s ease-out'; // re-enable transition
+  });
+  window.addEventListener('mouseleave', () => {
+    if (!isDragging) return;
+    isDragging = false;
+    wrapper.style.transition = 'transform 0.1s ease-out';
+  });
+
+})();
+
 
 function showGlobalSpinner() {
     // Create spinner overlay if it doesn't exist
@@ -1593,22 +3317,60 @@ function showGlobalSpinner() {
                 left: 0;
                 width: 100%;
                 height: 100%;
-                background-color: rgba(255, 255, 255, 0.7);
+                background-color: rgba(255, 255, 255, 0.85);
                 z-index: 9999;
                 display: flex;
                 justify-content: center;
                 align-items: center;
+                backdrop-filter: blur(2px);
             ">
-                <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
-                    <span class="visually-hidden">Loading...</span>
+                <div class="spinner-container" style="position: relative;">
+                    <!-- Ripple Effect (Optional) -->
+                    <div class="icon-ripple" style="
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        width: 80px;
+                        height: 80px;
+                        border-radius: 50%;
+                        background: rgba(10, 142, 78, 0.3);
+                        animation: ripple 1.5s infinite ease-out;
+                    "></div>
+                    
+                    <!-- Your Custom PNG Icon -->
+                    <img src="static/logos/invoice1.png" alt="Loading" style="
+                        width: 48px;
+                        height: 48px;
+                        color:  #0a8e4e;
+                        animation: spin 1.5s infinite linear, pulse 1.5s infinite ease-in-out;
+                    ">
                 </div>
             </div>
+        `);
+
+        // Add CSS animations
+        $('head').append(`
+            <style>
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+                @keyframes pulse {
+                    0% { transform: scale(1); opacity: 0.9; }
+                    50% { transform: scale(1.1); opacity: 1; }
+                    100% { transform: scale(1); opacity: 0.9; }
+                }
+                @keyframes ripple {
+                    0% { transform: translate(-50%, -50%) scale(0.8); opacity: 1; }
+                    100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+                }
+            </style>
         `);
     } else {
         $('#globalSpinnerOverlay').show();
     }
 }
-
 function hideGlobalSpinner() {
     $('#globalSpinnerOverlay').hide();
 }
@@ -1620,3 +3382,4 @@ function showDatatableSpinner() {
 function hideDatatableSpinner() {
     $('#datatableSpinnerOverlay').hide();
 }
+

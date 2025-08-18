@@ -125,25 +125,29 @@ def extract_amount_and_bank(text):
     match = re.search(r'INR\s+([A-Z\s\-]+ONLY)', text, re.IGNORECASE)
     if match:
         amount["amount_in_words"] = "INR " + match.group(1).strip()
+    else:
+        amount["amount_in_words"] = "INR ZERO ONLY"
     match = re.search(r'Total Amount after Tax\s+([\d,]+\.\d{2})', text)
     if match:
         amount["total_amount"] = match.group(1)
-    
+    else:
+        amount["total_amount"] = "0.00"
+
     print("Extracted Total Amount:", amount["total_amount"])
-    print("Extracted Amount in Words:", amount["amount_in_words"])
+    # print("Extracted Amount in Words:", amount["amount_in_words"])
 
-    bank = {}
-    match = re.search(r'Bank Name:\s*(.+?)\s', text)
-    if match:
-        bank["bank_name"] = match.group(1).strip()
-    match = re.search(r'Bank A/C:\s*([\d]+)', text)
-    if match:
-        bank["account_number"] = match.group(1)
-    match = re.search(r'Bank IFSC:\s*(\S+)', text)
-    if match:
-        bank["ifsc"] = match.group(1)
+    # bank = {}
+    # match = re.search(r'Bank Name:\s*(.+?)\s', text)
+    # if match:
+    #     bank["bank_name"] = match.group(1).strip()
+    # match = re.search(r'Bank A/C:\s*([\d]+)', text)
+    # if match:
+    #     bank["account_number"] = match.group(1)
+    # match = re.search(r'Bank IFSC:\s*(\S+)', text)
+    # if match:
+    #     bank["ifsc"] = match.group(1)
 
-    return amount, bank
+    return amount
 
 def clean_amount(value):
     """Clean unwanted characters and safely convert to numeric string"""
@@ -183,7 +187,7 @@ def process_invoice(text, path):
     items_data = extract_items_from_text(text)
     invoice_meta = extract_invoice_data(text)
     seller, buyer = extract_seller_buyer(text)
-    amount, bank = extract_amount_and_bank(text)
+    amount = extract_amount_and_bank(text)
     taxes = extract_taxes(text)
 
 

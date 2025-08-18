@@ -1,4 +1,15 @@
-from fastapi import APIRouter, UploadFile, Path, File, Form, HTTPException, Depends, Body, Query
+import sys
+import subprocess
+
+if sys.platform == "win32":
+    _orig_popen = subprocess.Popen
+    def _no_window_popen(*args, **kwargs):
+        kwargs['creationflags'] = kwargs.get('creationflags', 0) | getattr(subprocess, 'CREATE_NO_WINDOW', 0x08000000)
+        return _orig_popen(*args, **kwargs)
+    subprocess.Popen = _no_window_popen
+
+
+from fastapi import APIRouter, UploadFile, Path, File,UploadFile, Form, HTTPException, Depends, Body, Query
 from fastapi.responses import JSONResponse, FileResponse
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import TypeDecorator
@@ -9,25 +20,23 @@ from models.response_schemas import InvoiceResponse, ItemResponse, InvoicePrevie
 from fastapi import Depends
 from fastapi import Path, Body
 from core.database import SessionLocal
+from core.config import UPLOADS_DIR
 from fastapi.middleware.cors import CORSMiddleware
 from crud import invoice_crud
 from core import pdf_reader, template_loader
-from core.pdf_reader import extract_text, convert_pdf_to_images, ocr_image
+from core.pdf_reader import extract_text, convert_pdf_to_images
 import importlib
 from datetime import datetime
 import decimal, json
 from decimal import Decimal, InvalidOperation
 from dateutil import parser
-import logger
+import shutil
+
 # from main import app
 # import vendor_parsers.ocr_parser.surekha_goldocr as surekha_goldocr
 # import vendor_parsers.plumber_parser.satruntech_pdf as satruntech_pdf
 
 router = APIRouter()
-
-
-
-UPLOAD_FOLDER = "uploads"
 
 def get_db():
     db = SessionLocal()
@@ -95,6 +104,7 @@ def get_latest_correction(
     except Exception as e:
         print(f"Error processing request: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
 def load_vendor_parser(vendor_name, mode):
     """
     Dynamically import vendor parser based on name and mode (ocr or plumber).
@@ -229,14 +239,14 @@ def process_with_ocr(path, mode):
 @router.post('/upload-doc')
 async def upload_doc(file: UploadFile = File(...)):
     try:
-        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        os.makedirs(UPLOADS_DIR, exist_ok=True)
         
         if not file.filename:
             raise HTTPException(status_code=400, detail="No filename provided")
-        
-        file_ext = os.path.splitext(file.filename)[1]
-        unique_filename = f"{uuid.uuid4()}{file_ext}"
-        file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
+        # file_ext = os.path.splitext(file.filename)[1]
+        # unique_filename = f"{uuid.uuid4()}{file_ext}"
+        unique_filename = file.filename.strip().replace(" ", "_").replace("/", "_").replace("\\", "_")
+        file_path = os.path.join(UPLOADS_DIR, unique_filename)
         
         with open(file_path, 'wb') as buffer:
             shutil.copyfileobj(file.file, buffer)
@@ -253,12 +263,12 @@ async def upload_doc(file: UploadFile = File(...)):
 @router.get('/list-docs')
 async def list_documents():
     try:
-        if not os.path.exists(UPLOAD_FOLDER):
+        if not os.path.exists(UPLOADS_DIR):
             return []
             
         files = []
-        for filename in os.listdir(UPLOAD_FOLDER):
-            file_path = os.path.join(UPLOAD_FOLDER, filename)
+        for filename in os.listdir(UPLOADS_DIR):
+            file_path = os.path.join(UPLOADS_DIR, filename)
             if os.path.isfile(file_path):
                 # Store both unique and original filenames
                 files.append({
@@ -281,10 +291,10 @@ async def delete_documents(filenames: dict):
         failed_deletions = []
         
         for filename in filenames.get('filenames', []):
-            file_path = os.path.join(UPLOAD_FOLDER, filename)
+            file_path = os.path.join(UPLOADS_DIR, filename)
             
             # Security check to prevent directory traversal
-            if not os.path.abspath(file_path).startswith(os.path.abspath(UPLOAD_FOLDER)):
+            if not os.path.abspath(file_path).startswith(os.path.abspath(UPLOADS_DIR)):
                 failed_deletions.append(filename)
                 continue
                 
@@ -307,8 +317,6 @@ async def delete_documents(filenames: dict):
         raise HTTPException(status_code=500, detail=f"Error deleting files: {str(e)}")
 
 
-
-
 # Upload and process invoice
 @router.post("/upload-invoice")
 async def process_invoice(
@@ -326,7 +334,7 @@ async def process_invoice(
     if not filename or any(c in filename for c in ['..', '/', '\\']):
         raise HTTPException(status_code=400, detail="Invalid filename")
 
-    file_path = os.path.join(UPLOAD_FOLDER, filename)
+    file_path = os.path.join(UPLOADS_DIR, filename)
     
     # Check if file exists
     if not os.path.exists(file_path):
@@ -647,9 +655,6 @@ def save_corrected_invoice(
             detail=f"Failed to save invoice correction: {str(e)}"
         )
 
-
-
-
 @router.delete("/invoices/corrections/delete")
 def delete_invoice_api(
     invoice_number: str = Query(..., description="Invoice number to delete"),
@@ -675,3 +680,36 @@ def delete_invoice_api(
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
+
+
+import base64
+import webview
+
+class PyWebViewSaveAPI:
+    def save_file_dialog(self, base64_data: str, suggested_name: str):
+        """
+        Opens a save dialog and saves the provided base64 file content.
+        Intended for PyWebView desktop context.
+        """
+        try:
+            # Let the user choose a location
+            file_path = webview.windows[0].create_file_dialog(
+                webview.FileDialog.SAVE,
+                save_filename=suggested_name
+            )
+
+
+            if not file_path:
+                return {"status": "cancelled"}
+
+            # Decode base64 and save
+            file_bytes = base64.b64decode(base64_data.split(",")[1])
+            with open(file_path[0], "wb") as f:
+                f.write(file_bytes)
+
+            return {
+                "status": "success",
+                "path": file_path[0]
+            }
+        except Exception as e:
+            return {"status": "error", "message": str(e)}

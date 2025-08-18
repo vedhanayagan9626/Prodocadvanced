@@ -1,5 +1,6 @@
 # response_schemas.py
 from pydantic import BaseModel
+from pydantic import ConfigDict
 from typing import Optional, List
 from decimal import Decimal
 
@@ -15,8 +16,7 @@ class ItemResponse(BaseModel):
     SGST: Optional[str]
     Amount: Optional[Decimal]
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class InvoiceResponse(BaseModel):
     InvoiceNo: str
@@ -29,8 +29,7 @@ class InvoiceResponse(BaseModel):
     TotalQuantity: Optional[Decimal]
     Items: List[ItemResponse] = []
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class UpdateInvoiceRequest(BaseModel):
     invoice_number: str
@@ -54,8 +53,7 @@ class CompletedItemResponse(BaseModel):
     amount: Decimal
     hsn: Optional[str]
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class CompletedInvoiceResponse(BaseModel):
     invoice_number: str
@@ -72,8 +70,7 @@ class CompletedInvoiceResponse(BaseModel):
     correction_date: datetime
     items: List[CompletedItemResponse] = []
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class InvoicePreviewResponse(BaseModel):
     invoice_number: str
@@ -85,5 +82,4 @@ class InvoicePreviewResponse(BaseModel):
     from_address: str = ""  # Optional with default
     to_address: str = ""    # Optional with default
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

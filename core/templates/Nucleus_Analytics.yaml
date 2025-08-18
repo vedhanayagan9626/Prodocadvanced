@@ -1,0 +1,65 @@
+vendor: Nucleus Analytics Private Limited
+keywords: ["Nucleus Analytics Private Limited","GSTIN: 29AAECNOIGIEIZR"]  
+
+fields:
+  seller_name: "Nucleus Analytics Private Limited"
+  seller_address:
+    method: below
+    key: "Nucleus Analytics Private Limited"
+    stop: "Tel:|CIN:|GSTIN:|TAX INVOICE"
+  seller_gstin: "GSTIN:? ?([0-9A-Z]{15})"
+  seller_cin: "CIN:? ?([A-Z0-9]{21})"
+  seller_pan: "PAN:? ?([A-Z0-9]{10})"
+
+  invoice_number: "Invoice No:? ?([A-Z0-9/\\-]+)"
+  invoice_date: "Date:? ?([0-9]{1,2} [A-Za-z]+ [0-9]{4})"
+  
+  # --- Buyer fields
+  buyer_name: "M/S[.,]?\\s*([A-Z ]+PVT LTD)"
+  buyer_gstin: "Customer GSTIN\\s*([0-9A-Z]{15})"
+  buyer_address:
+    method: below
+    key: "M/S[.,]? ABHARAN JEWELLERS PVT LTD"
+    stop: "Customer GSTIN|Payment terms|Place of Supply|unit"
+
+  # --- Table line items (optional for advanced extractor)
+  table:
+    start_keyword: "SLNo."
+    end_keyword: "Declaration:|SubTotat|Total"
+    columns:
+      - name: sl_no
+        position: 1
+      - name: hsn_code
+        position: 2
+      - name: description
+        position: 3
+      - name: unit
+        position: 4
+      - name: quantity
+        position: 5
+      - name: price_per_unit
+        position: 6
+      - name: total
+        position: 7
+
+  # --- Tax fields
+  igst_percent: "IGST% ?\\[ ?([0-9]+)%"
+  igst_amount: "IGST%[ \\[]*[0-9]+%[ ]*([\\d,]+.\\d{2})"
+  cgst_percent: "cast % ?([0-9]+)%"
+  sgst_percent: "SGST % ?\\[ ?([0-9]+)%"
+  cgst_amount: ""
+  sgst_amount: ""
+
+  # --- Totals
+  subtotal: "SubTotat\\|[ _]*([\\d,.]+)"
+  total: "Total[ ,]*([\\d,]+.\\d{2})"
+  amount_in_words: "Rupees (.+?) Only"
+
+  # --- Bank details
+  bank_name: "Name of the Bank ?([A-Za-z ]+),"
+  branch: "Branch ?([A-Za-z ,]+)"
+  account_no: "Account No ?([a-zA-Z0-9]+)"
+  ifsc: "IFSC ?([a-zA-Z0-9]+)"
+
+  # --- Authorisation
+  authoriser: "For Nucleus Analytics Private Limited"

@@ -93,9 +93,9 @@ function renderCompletedInvoices(invoices, total = 0, totalPages = 1) {
                     <button class="btn-download" data-invoice="${invoice.invoice_number}">
                         <i class="fas fa-download"></i>
                     </button>
-                    <button class="btn-edit" data-invoice="${invoice.invoice_number}">
+                    <!-- <button class="btn-edit" data-invoice="${invoice.invoice_number}">
                         <i class="fas fa-edit"></i>
-                    </button>
+                    </button> -->
                     <button class="btn-delete" data-invoice="${invoice.invoice_number}">
                         <i class="fas fa-trash"></i>
                     </button>
@@ -122,8 +122,8 @@ document.getElementById('completed-invoices-body').addEventListener('click', fun
         
         if (button.classList.contains('btn-download')) {
             downloadInvoice(e, invoiceNumber);
-        } else if (button.classList.contains('btn-edit')) {
-            editInvoice(e, invoiceNumber);
+        // } else if (button.classList.contains('btn-edit')) {
+        //     editInvoice(e, invoiceNumber);
         } else if (button.classList.contains('btn-delete')) {
             deleteInvoice(e, invoiceNumber);
         }
@@ -150,8 +150,8 @@ document.addEventListener('click', function(e) {
     
     if (btn.classList.contains('btn-download')) {
         downloadInvoice(e, invoiceNumber);
-    } else if (btn.classList.contains('btn-edit')) {
-        editInvoice(e, invoiceNumber);
+    // } else if (btn.classList.contains('btn-edit')) {
+    //     editInvoice(e, invoiceNumber);
     } else if (btn.classList.contains('btn-delete')) {
         deleteInvoice(e, invoiceNumber);
     }
@@ -182,58 +182,53 @@ function redirectToInvoiceDetail(invoiceNumber) {
 async function downloadInvoice(event, invoiceNumber) {
     event.preventDefault();
     event.stopPropagation();
+
     showLoading('Preparing download...');
-    
+
     try {
         if (!window.jspdf || !window.html2canvas) {
             throw new Error('Required libraries not loaded');
         }
-        
+
         const { jsPDF } = window.jspdf;
-        
-        // Debug logs
-        console.log('Original invoiceNumber:', invoiceNumber);
+
         const encodedInvoiceNumber = encodeURIComponent(invoiceNumber);
-        console.log('Encoded invoiceNumber:', encodedInvoiceNumber);
 
-        // Using query parameter approach
-        const requestUrl = `/api/v1/invoices/corrections/latest?invoice_number=${encodedInvoiceNumber}`;
-        console.log('Request URL:', requestUrl);
-
-        const correctionResponse = await fetch(requestUrl, {
+        // Fetch invoice correction data
+        const correctionResponse = await fetch(`/api/v1/invoices/corrections/latest?invoice_number=${encodedInvoiceNumber}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        console.log('Response status:', correctionResponse.status);
-        
+
         if (!correctionResponse.ok) {
             const errorText = await correctionResponse.text();
-            console.error('Error response:', errorText);
             throw new Error(errorText);
         }
 
         const correction = await correctionResponse.json();
-        console.log('Correction data:', correction);
-        
-        // Fetch items
+
+        // Fetch invoice items
         const itemsResponse = await fetch(`/api/v1/corrections/${correction.CorrectionID}/items`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (!itemsResponse.ok) throw new Error(await itemsResponse.text());
+
+        if (!itemsResponse.ok) {
+            throw new Error(await itemsResponse.text());
+        }
+
         const items = await itemsResponse.json();
 
-        // Create temporary container
+        // Create a temporary container and render the invoice preview
         const tempPaper = document.createElement('div');
         tempPaper.id = 'temp-invoice-paper';
-        
-        // Apply paper size class based on stored preference or default
+
+        // Apply paper size class based on correction.TemplateStyle or default to 'a4'
         const paperSize = correction.TemplateStyle?.paperSize || 'a4';
         tempPaper.className = `invoice-paper ${paperSize}`;
-        
+
         tempPaper.style.position = 'absolute';
         tempPaper.style.left = '-9999px';
         document.body.appendChild(tempPaper);
-        
-        // Prepare data
+
         const invoiceData = {
             invoice_data: {
                 invoice_number: correction.OriginalInvoiceNo,
@@ -251,33 +246,25 @@ async function downloadInvoice(event, invoiceNumber) {
             items: items,
             styling: correction.TemplateStyle || {}
         };
-        
-        // Render the invoice
+
         renderInvoicePreview(invoiceData, tempPaper);
-        
-        // Wait for rendering to complete
+
+        // Wait briefly to allow rendering
         await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Get actual paper dimensions in pixels at 96 DPI
+
+        // Calculate dimensions for canvas at 96 DPI
         let width, height;
         if (paperSize === 'a4') {
-            width = 8.27 * 96;  // A4 width in pixels at 96 DPI
-            height = 11.69 * 96; // A4 height in pixels at 96 DPI
+            width = 8.27 * 96;  // A4 width in px
+            height = 11.69 * 96; // A4 height in px
         } else {
-            width = 8.5 * 96;   // Letter width in pixels
-            height = 11 * 96;    // Letter height in pixels
+            width = 8.5 * 96;   // Letter width in px
+            height = 11 * 96;    // Letter height in px
         }
-        
-        // Generate PDF with proper dimensions
-        const pdf = new jsPDF({
-            orientation: 'portrait',
-            unit: 'mm',
-            format: paperSize
-        });
-        
-        // Use html2canvas with proper scaling
-        await html2canvas(tempPaper, {
-            scale: 2, // Higher scale for better quality
+
+        // Use html2canvas to generate image of invoice
+        const canvas = await html2canvas(tempPaper, {
+            scale: 2,
             width: width,
             height: height,
             logging: false,
@@ -287,24 +274,48 @@ async function downloadInvoice(event, invoiceNumber) {
             scrollY: 0,
             windowWidth: width,
             windowHeight: height
-        }).then(canvas => {
-            const imgData = canvas.toDataURL('image/png');
-            
-            // Calculate dimensions in mm (jsPDF uses mm by default)
-            const imgWidth = paperSize === 'a4' ? 210 : 216; // A4=210mm, Letter=216mm
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
-            
-            pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-            pdf.save(`${invoiceNumber.replace(/\//g, '-')}.pdf`);
         });
-        
-        // Clean up
+
+        const imgData = canvas.toDataURL('image/png');
+
+        // Create jsPDF instance with paper size
+        const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: paperSize
+        });
+
+        // Calculate image dimensions in mm (jsPDF default)
+        const imgWidth = paperSize === 'a4' ? 210 : 216;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+
+        // Convert PDF to base64 data URI string for sending to backend
+        const pdfBase64 = pdf.output('datauristring');
+
+        // Suggest filename for saving, sanitize invoice number, add .pdf extension
+        const suggestedFilename = `${invoiceNumber.replace(/\//g, '-')}.pdf`;
+
+        // Call PyWebView native save dialog to allow user to pick location and filename
+        const saveResponse = await window.pywebview.api.save_file_dialog(pdfBase64, suggestedFilename);
+
+        if (saveResponse.status === "success") {
+            showSuccess(`Invoice saved successfully: ${saveResponse.path}`);
+        } else if (saveResponse.status === "cancelled") {
+            showError("Save cancelled by user");
+        } else {
+            showError(`Error saving file: ${saveResponse.message || 'Unknown error'}`);
+        }
+
+        // Clean up temporary DOM
         document.body.removeChild(tempPaper);
-        showSuccess('Invoice downloaded successfully!');
+
     } catch (error) {
         console.error('Download error:', error);
         showError(error.message || 'Failed to download invoice');
-        
+
+        // Remove temp element if exists
         const tempPaper = document.getElementById('temp-invoice-paper');
         if (tempPaper) document.body.removeChild(tempPaper);
     }
@@ -639,12 +650,12 @@ function renderInvoicePreview(data, paperElement) {
     paperElement.appendChild(style);
 }
 
-function editInvoice(event, invoiceNumber) {
-    event.stopPropagation();
-    // Store current page in session storage so we can return to it
-    sessionStorage.setItem('lastInvoicePage', currentPage);
-    window.location.href = `/edit-invoice/${invoiceNumber}`;
-}
+// function editInvoice(event, invoiceNumber) {
+//     event.stopPropagation();
+//     // Store current page in session storage so we can return to it
+//     sessionStorage.setItem('lastInvoicePage', currentPage);
+//     window.location.href = `/edit-invoice/${invoiceNumber}`;
+// }
 
 document.addEventListener('DOMContentLoaded', function() {
     // Check if we're returning from edit
