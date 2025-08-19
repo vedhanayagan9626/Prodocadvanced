@@ -9,7 +9,7 @@ from pathlib import Path
 packages = [
     "passlib", "pdf2image", "pymssql", "fastapi", "webview",
     "ocrmypdf", "pdfplumber", "SQLAlchemy", "jinja2", "uvicorn",
-    "pydantic", "python_jose", "ecdsa", "rsa", "pythonnet"
+    "pydantic", "python_jose", "ecdsa", "rsa", "pythonnet", "paddleocr", "paddlepaddle"
 ]
 
 datas, binaries, hiddenimports = [], [], []
@@ -45,6 +45,10 @@ hiddenimports += [
     "vendor_parsers.ocr_parser.satruntech_ocr",
     "vendor_parsers.ocr_parser.surekha_goldocr",
     "vendor_parsers.ocr_parser.silver_czocr",
+    "paddleocr",
+    "paddlepaddle",
+    "paddleocr.tools",
+    "paddleocr.ppstructure"
 ]
 
 # === Runtime hook ===
@@ -120,7 +124,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False,
+    console=True,
     icon="app.ico",
     version_file="version_info.txt"
 )

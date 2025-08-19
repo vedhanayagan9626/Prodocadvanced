@@ -1,12 +1,4 @@
 import sys
-import subprocess
-
-if sys.platform == "win32":
-    _orig_popen = subprocess.Popen
-    def _no_window_popen(*args, **kwargs):
-        kwargs['creationflags'] = kwargs.get('creationflags', 0) | getattr(subprocess, 'CREATE_NO_WINDOW', 0x08000000)
-        return _orig_popen(*args, **kwargs)
-    subprocess.Popen = _no_window_popen
 
 
 from fastapi import APIRouter, UploadFile, Path, File,UploadFile, Form, HTTPException, Depends, Body, Query
@@ -31,6 +23,17 @@ import decimal, json
 from decimal import Decimal, InvalidOperation
 from dateutil import parser
 import shutil
+import subprocess
+
+if sys.platform == "win32":
+    _orig_popen = subprocess.Popen
+    def _no_window_popen(*args, **kwargs):
+        kwargs['creationflags'] = kwargs.get('creationflags', 0) | getattr(subprocess, 'CREATE_NO_WINDOW', 0x08000000)
+        return _orig_popen(*args, **kwargs)
+    subprocess.Popen = _no_window_popen
+
+import os
+import ocrmypdf
 
 # from main import app
 # import vendor_parsers.ocr_parser.surekha_goldocr as surekha_goldocr
@@ -170,8 +173,7 @@ def process_with_pdfplumber(path, mode):
 
     return vendor_module.process_invoice(text,path)
 
-import os
-import ocrmypdf
+
 
 def process_with_ocr(path, mode):
     filepath = path
