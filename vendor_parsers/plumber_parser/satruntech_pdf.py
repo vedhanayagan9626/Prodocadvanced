@@ -134,6 +134,7 @@ def extract_amount_and_bank(text):
         amount["total_amount"] = "0.00"
 
     print("Extracted Total Amount:", amount["total_amount"])
+    
     # print("Extracted Amount in Words:", amount["amount_in_words"])
 
     # bank = {}

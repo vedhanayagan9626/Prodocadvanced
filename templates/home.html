@@ -140,42 +140,72 @@
         </div>
                 <!-- Completed Bills Content -->
         <div id="completed-list" class="content-section" style="display:none;">
-            <div class="card">
-                <div class="content-header">
-                    <h2>Completed Bills</h2>
-                    <div style="display: inline-flex;">
-                        <button class="upload-btn" onclick="document.getElementById('file-upload').click()">
-                            <i class="fas fa-cloud-upload-alt"></i> Upload Bill
-                        </button>
-                        <button class="upload-btn" style="margin-left: 10px; background-color: #34a853;">
-                            <i class="fas fa-plus"></i> New
-                        </button>
+                    <div class="card">
+                        <div class="content-header">
+                            <h2>Completed Bills</h2>
+                            <div style="display: inline-flex; align-items: center; gap: 10px;">
+                                <select id="bill-type-select" class="form-select">
+                                    <option value="regular">Regular Bills</option>
+                                    <option value="advanced">Advanced Bills</option>
+                                </select>
+                                <button class="upload-btn" onclick="document.getElementById('file-upload').click()">
+                                    <i class="fas fa-cloud-upload-alt"></i> Upload Bill
+                                </button>
+                                <button class="upload-btn" style="background-color: #34a853;" id="new-bill-btn">
+                                    <i class="fas fa-plus"></i> New
+                                </button>
+                                <button class="upload-btn" style="background-color: #f57c00; display: none;" id="download-excel-btn">
+                                    <i class="fas fa-file-excel"></i> Download Excel
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Regular Bills Table -->
+                        <table class="documents-table" id="regular-bills-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Invoice No.</th>
+                                    <th>Seller</th>
+                                    <th>Buyer</th>
+                                    <th>Items</th>
+                                    <th>Tax Amount</th>
+                                    <th>Total</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="regular-invoices-body">
+                                <!-- Regular bills data will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                        
+                        <!-- Advanced Bills Table -->
+                        <table class="documents-table" id="advanced-bills-table" style="display: none;">
+                            <thead>
+                                <tr>
+                                    <th>Bill Date</th>
+                                    <th>Bill Number</th>
+                                    <th>Vendor</th>
+                                    <th>Customer</th>
+                                    <th>Items</th>
+                                    <th>Subtotal</th>
+                                    <th>Tax Amount</th>
+                                    <th>Total</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="advanced-invoices-body">
+                                <!-- Advanced bills data will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                        
+                        <div class="pagination-controls">
+                            <button id="prev-page" disabled>Previous</button>
+                            <span id="page-info">Page 1 of 1</span>
+                            <button id="next-page" disabled>Next</button>
+                        </div>
                     </div>
-                </div>
-                
-                <table class="documents-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Invoice No.</th>
-                            <th>Seller</th>
-                            <th>Buyer</th>
-                            <th>Items</th>
-                            <th>Tax Amount</th>
-                            <th>Total</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="completed-invoices-body">
-                        <!-- Data will be populated by JavaScript -->
-                    </tbody>
-                </table>
-                <div class="pagination-controls">
-                    <button id="prev-page" disabled>Previous</button>
-                    <span id="page-info">Page 1 of 1</span>
-                    <button id="next-page" disabled>Next</button>
-                </div>
-            </div>
         </div>
         
         <!-- Choose Template Content -->

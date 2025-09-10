@@ -2407,6 +2407,7 @@ function processFile(filename, mode) {
     const formData = new FormData();
     formData.append('filename', filename);
     formData.append('mode', mode);
+    formData.append('advanced', 'false'); 
 
     fetch('/api/v1/upload-invoice', {
         method: 'POST',

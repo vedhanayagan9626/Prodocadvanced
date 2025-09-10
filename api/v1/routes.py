@@ -1,13 +1,11 @@
 import sys
-
-
 from fastapi import APIRouter, UploadFile, Path, File,UploadFile, Form, HTTPException, Depends, Body, Query
 from fastapi.responses import JSONResponse, FileResponse
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import TypeDecorator
 import shutil, os, uuid, json, datetime
 from typing import List, Optional
-from models.models import Invoices, CorrectedInvoices, CorrectedItems
+from models.models import Invoices, CorrectedInvoices, CorrectedItems, AdvancedColumnsInvoicedata, AdvancedColumnsItems
 from models.response_schemas import InvoiceResponse, ItemResponse, InvoicePreviewResponse
 from fastapi import Depends
 from fastapi import Path, Body
@@ -24,6 +22,11 @@ from decimal import Decimal, InvalidOperation
 from dateutil import parser
 import shutil
 import subprocess
+import zipfile
+import io
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment
+from starlette.responses import StreamingResponse
 
 if sys.platform == "win32":
     _orig_popen = subprocess.Popen
@@ -108,7 +111,7 @@ def get_latest_correction(
         print(f"Error processing request: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-def load_vendor_parser(vendor_name, mode):
+def load_vendor_parser(vendor_name, mode, advanced):
     """
     Dynamically import vendor parser based on name and mode (ocr or plumber).
     Expects file to exist under:
@@ -122,6 +125,7 @@ def load_vendor_parser(vendor_name, mode):
             "Nucleus Analytics Private Limited": "Nucleus_pdf"
             # Add more mappings here
         }
+    # Ocr will not perform because we can't extract high data from it so , in the start we convert image to textpdf so the ocr method will redirect to pdf plumber actions
     elif mode == 'ocr':
         vendor_map = {
             "Surekha Gold Private Limited": "surekha_goldocr",
@@ -135,14 +139,25 @@ def load_vendor_parser(vendor_name, mode):
     if not key:
         return None
     
-    print(f"[INFO] Loading parser for vendor: {vendor_name} in {mode} mode")
-    module_path = f"vendor_parsers.{mode}_parser.{key}"
-    try:
-        return importlib.import_module(module_path)
-    except ModuleNotFoundError:
-        return None
+    # If advanced is True the if condition will do extraction on advance columns, both normal and advanced are same logic but returning columns will be differ
+    if advanced == 'true' or advanced == True:
+        print(f"[INFO] Loading parser for vendor: {vendor_name} in {mode} mode and Advanced Columns")
+        module_path = f"vendor_parsers.{mode}_parser.{key}_advancedcolumns"
+        try:
+            return importlib.import_module(module_path)
+        except ModuleNotFoundError:
+            return None
+        
+    # this is a regular extraction of all details 
+    else:
+        print(f"[INFO] Loading parser for vendor: {vendor_name} in {mode} mode")
+        module_path = f"vendor_parsers.{mode}_parser.{key}"
+        try:
+            return importlib.import_module(module_path)
+        except ModuleNotFoundError:
+            return None
 
-def process_with_pdfplumber(path, mode):
+def process_with_pdfplumber(path, mode, advanced):
     if not path.lower().endswith(".pdf"):
         raise ValueError("[ERROR] Input is not a PDF. Cannot process with pdfplumber.")
             
@@ -166,21 +181,19 @@ def process_with_pdfplumber(path, mode):
     print(f"[INFO] Detected vendor: {vendor}")
 
     # Dynamically import the correct vendor parser
-    vendor_module = load_vendor_parser(vendor, mode)
+    vendor_module = load_vendor_parser(vendor, mode, advanced)
 
     if not vendor_module:
         raise ValueError(f"[ERROR] No parser found for vendor '{vendor}' in plumber mode.")
 
     return vendor_module.process_invoice(text,path)
 
-
-
-def process_with_ocr(path, mode):
+def process_with_ocr(path, mode, advanced):
     filepath = path
     fmode = "plumber" if mode.lower() == "ocr" else "plumber"  # Seems redundant, but assuming future logic
 
     if path.lower().endswith(".pdf"):
-        return process_with_pdfplumber(filepath, fmode)
+        return process_with_pdfplumber(filepath, fmode,advanced)
 
     elif path.lower().endswith((".jpg", ".jpeg", ".png")):
         # Convert image to temporary PDF first
@@ -200,7 +213,7 @@ def process_with_ocr(path, mode):
         # if os.path.exists(temp_pdf_path):
         #     os.remove(temp_pdf_path)
 
-        return process_with_pdfplumber(output_pdf_path, fmode)
+        return process_with_pdfplumber(output_pdf_path, fmode,advanced)
 
     else:
         raise ValueError("[ERROR] Unsupported file type for OCR processing.")
@@ -324,11 +337,15 @@ async def delete_documents(filenames: dict):
 async def process_invoice(
     filename: str = Form(...),
     mode: str = Form(...),
+    advanced: str = Form(...),
     db: Session = Depends(get_db)
 ):
     """
     Process an already uploaded file (PDF or image) for invoice extraction.
     """
+    # Convert advanced string to boolean
+    advanced_bool = str(advanced).lower() == 'true'
+    print(f"{mode}")
     if mode.lower() not in ["ocr", "text"]:
         raise HTTPException(status_code=400, detail="Mode must be either 'ocr' or 'text'")
 
@@ -344,29 +361,36 @@ async def process_invoice(
 
     try:
         # Process the invoice based on user given mode
-        result = process_with_pdfplumber(file_path, mode="plumber") if mode == "text" else process_with_ocr(file_path, mode="ocr")
-        
+        result = process_with_pdfplumber(path=file_path, mode="plumber", advanced=advanced_bool) if mode == "text" else process_with_ocr(path=file_path, mode="ocr", advanced=advanced)
+
         if not result:
             raise HTTPException(status_code=400, detail="No data extracted from the invoice")
         
-        invoice_data = result.get("invoice_data")
-        items = result.get("items")
-        invoice_number = result.get("invoice_number")
-
-        invoice_crud.insert_invoice_orm(db, invoice_data)
-        invoice_crud.insert_items_orm(db, invoice_number, items)
-
-        # Fetch the saved invoice and items from DB
-        saved_invoice = invoice_crud.get_invoice_by_invoice_no_orm(db, invoice_number)
-        saved_items = invoice_crud.get_items_by_invoice_no_orm(db, invoice_number)
-
-        response = {
-            "invoice_number": invoice_number,
-            "invoice_data": saved_invoice.as_dict() if saved_invoice else {},
-            "items": [item.as_dict() for item in saved_items]
-        }
+        if advanced_bool:
+            invoice_data = result.get("invoice_data")
+            items = result.get("items")
+            response = result
+            return JSONResponse(content=response)
         
-        return JSONResponse(content=response)
+        else:
+            invoice_data = result.get("invoice_data")
+            items = result.get("items")
+            invoice_number = result.get("invoice_number")
+
+            invoice_crud.insert_invoice_orm(db, invoice_data)
+            invoice_crud.insert_items_orm(db, invoice_number, items)
+
+            # Fetch the saved invoice and items from DB
+            saved_invoice = invoice_crud.get_invoice_by_invoice_no_orm(db, invoice_number)
+            saved_items = invoice_crud.get_items_by_invoice_no_orm(db, invoice_number)
+
+            response = {
+                "invoice_number": invoice_number,
+                "invoice_data": saved_invoice.as_dict() if saved_invoice else {},
+                "items": [item.as_dict() for item in saved_items]
+            }
+            return JSONResponse(content=response)
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"[FATAL] {str(e)}")
 
@@ -506,8 +530,6 @@ def update_invoice_items(items: List[dict], db: Session = Depends(get_db)):
     for item in items:
         invoice_crud.update_invoice_item_orm(db, item)
     return {"detail": "Items updated successfully"}
-
-
 
 
 # delete an invoice by invoice number
@@ -682,6 +704,483 @@ def delete_invoice_api(
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@router.post('/save-invoice')
+def save_advanced_columns(
+    invoice_data: dict= Body(...),
+    db: Session = Depends(get_db)
+):
+    
+    """
+    Save advanced invoice data from the invoice editor.
+    Expects JSON with structure: { "invoice_data": {...}, "items": [...] }
+    """
+    try:
+        # validate required data structures
+        if not invoice_data or 'invoice_data' not in invoice_data or 'items' not in invoice_data:
+             raise HTTPException(status_code=400, detail="Invalid data structure. Expected {invoice_data: {...}, items: [...]}")
+
+        invoice_info = invoice_data['invoice_data']
+        items = invoice_data['items']
+        
+        # Create new advanced invoice record
+        advanced_invoice = AdvancedColumnsInvoicedata(
+            BillDate=parse_date(invoice_info.get('billDate', '')) if invoice_info.get('billDate') else None,
+            BillNumber=invoice_info.get('billNumber'),
+            PurchaseOrder=invoice_info.get('purchaseOrder'),
+            BillStatus=invoice_info.get('billStatus'),
+            SourceOfSupply=invoice_info.get('sourceOfSupply'),
+            DestinationOfSupply=invoice_info.get('destinationOfSupply'),
+            GSTTreatment=invoice_info.get('gstTreatment'),
+            GSTIN=invoice_info.get('gstin'),
+            IsInclusiveTax=invoice_info.get('isInclusiveTax', '').lower() == 'yes',
+            TDSPercentage=safe_decimal(invoice_info.get('tdsPercentage')),
+            TDSAmount=safe_decimal(invoice_info.get('tdsAmount')),
+            TDSSectionCode=invoice_info.get('tdsSectionCode'),
+            TDSName=invoice_info.get('tdsName'),
+            VendorName=invoice_info.get('vendorName'),
+            DueDate=parse_date(invoice_info.get('dueDate', '')) if invoice_info.get('dueDate') else None,
+            CurrencyCode=invoice_info.get('currencyCode'),
+            ExchangeRate=safe_decimal(invoice_info.get('exchangeRate')),
+            AttachmentID=invoice_info.get('attachmentId'),
+            AttachmentPreviewID=invoice_info.get('attachmentPreviewId'),
+            AttachmentName=invoice_info.get('attachmentName'),
+            AttachmentType=invoice_info.get('attachmentType'),
+            AttachmentSize=invoice_info.get('attachmentSize'),
+            SubTotal=safe_decimal(invoice_info.get('subTotal')),
+            Total=safe_decimal(invoice_info.get('total')),
+            Balance=safe_decimal(invoice_info.get('balance')),
+            VendorNotes=invoice_info.get('vendorNotes'),
+            TermsConditions=invoice_info.get('termsConditions'),
+            PaymentTerms=invoice_info.get('paymentTerms'),
+            PaymentTermsLabel=invoice_info.get('paymentTermsLabel'),
+            IsBillable=invoice_info.get('isBillable', '').lower() == 'true',
+            CustomerName=invoice_info.get('customerName'),
+            ProjectName=invoice_info.get('projectName'),
+            PurchaseOrderNumber=invoice_info.get('purchaseOrderNumber'),
+            IsDiscountBeforeTax=invoice_info.get('isDiscountBeforeTax', '').lower() == 'true',
+            EntityDiscountAmount=safe_decimal(invoice_info.get('entityDiscountAmount')),
+            DiscountAccount=invoice_info.get('discountAccount'),
+            IsLandedCost=invoice_info.get('isLandedCost', '').lower() == 'true',
+            WarehouseName=invoice_info.get('warehouseName'),
+            BranchName=invoice_info.get('branchName'),
+            CF_Transporte_Name=invoice_info.get('cfTransporteName'),
+            TCSTaxName=invoice_info.get('tcsTaxName'),
+            TCSPercentage=safe_decimal(invoice_info.get('tcsPercentage')),
+            NatureOfCollection=invoice_info.get('natureOfCollection'),
+            TCSAmount=safe_decimal(invoice_info.get('tcsAmount')),
+            SupplyType=invoice_info.get('supplyType'),
+            ITCEligibility=invoice_info.get('itcEligibility'),
+            Status='SAVED',  # Default status
+            Notes=invoice_info.get('notes', ''),
+            TemplateStyle=invoice_info.get('templateStyle', {})
+        )
+        
+        db.add(advanced_invoice)
+        db.flush()  # Get the InvoiceID for foreign key relationship
+        
+        # Save items
+        for item_data in items:
+            advanced_item = AdvancedColumnsItems(
+                InvoiceID=advanced_invoice.InvoiceID,
+                ItemName=item_data.get('Item Name'),
+                SKU=item_data.get('SKU'),
+                HSN_SAC=item_data.get('HSN/SAC'),
+                Quantity=safe_decimal(item_data.get('Quantity')),
+                Rate=safe_decimal(item_data.get('Rate')),
+                TaxPercentage=safe_decimal(item_data.get('Tax Percentage')),
+                TaxAmount=safe_decimal(item_data.get('Tax Amount')),
+                ItemTotal=safe_decimal(item_data.get('Item Total'))
+            )
+            db.add(advanced_item)
+        
+        db.commit()
+        
+        return {
+            "status": "success",
+            "message": "Advanced invoice data saved successfully",
+            "invoice_id": advanced_invoice.InvoiceID
+        }
+        
+    except Exception as e:
+        db.rollback()
+        print(f"Error saving advanced invoice data: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to save advanced invoice data: {str(e)}"
+        )
+    
+@router.get("/advanced-invoices")
+def get_advanced_invoices(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    try:
+        # Query advanced invoices
+        query = db.query(AdvancedColumnsInvoicedata)
+        
+        total = query.count()
+        invoices = query.order_by(AdvancedColumnsInvoicedata.CreatedDate.desc()) \
+                       .offset((page - 1) * per_page) \
+                       .limit(per_page) \
+                       .all()
+        
+        result = []
+        for invoice in invoices:
+            # Get items for this invoice
+            items = db.query(AdvancedColumnsItems).filter(
+                AdvancedColumnsItems.InvoiceID == invoice.InvoiceID
+            ).all()
+            
+            # Calculate total tax amount from all items
+            total_tax = sum(float(item.TaxAmount) if item.TaxAmount else 0.0 for item in items)
+            
+            invoice_data = {
+                "InvoiceID": invoice.InvoiceID,
+                "BillDate": str(invoice.BillDate) if invoice.BillDate else None,
+                "BillNumber": invoice.BillNumber,
+                "VendorName": invoice.VendorName,
+                "CustomerName": invoice.CustomerName,
+                "SubTotal": float(invoice.SubTotal) if invoice.SubTotal else 0.0,
+                "TaxAmount": total_tax,
+                "Total": float(invoice.Total) if invoice.Total else 0.0,
+                "Status": invoice.Status,
+                "Items": [{
+                    "ItemName": item.ItemName,
+                    "SKU": item.SKU,
+                    "Quantity": float(item.Quantity) if item.Quantity else 0.0,
+                    "Rate": float(item.Rate) if item.Rate else 0.0,
+                    "TaxPercentage": float(item.TaxPercentage) if item.TaxPercentage else 0.0,
+                    "TaxAmount": float(item.TaxAmount) if item.TaxAmount else 0.0,
+                    "ItemTotal": float(item.ItemTotal) if item.ItemTotal else 0.0
+                } for item in items]
+            }
+            result.append(invoice_data)
+        
+        # Create response headers
+        headers = {
+            "X-Total-Count": str(total),
+            "X-Page": str(page),
+            "X-Per-Page": str(per_page),
+            "X-Total-Pages": str((total + per_page - 1) // per_page)
+        }
+        
+        return JSONResponse(content=result, headers=headers)
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching advanced invoices: {str(e)}")
+
+@router.get("/advanced-invoices/export/excel")
+def export_advanced_invoices_excel(db: Session = Depends(get_db)):
+    try:
+        # Create a BytesIO object for the zip file
+        zip_buffer = io.BytesIO()
+        
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            # Get all advanced invoices
+            invoices = db.query(AdvancedColumnsInvoicedata).order_by(
+                AdvancedColumnsInvoicedata.BillDate.desc()
+            ).all()
+            
+            for invoice in invoices:
+                # Get items for this invoice
+                items = db.query(AdvancedColumnsItems).filter(
+                    AdvancedColumnsItems.InvoiceID == invoice.InvoiceID
+                ).all()
+                
+                # Create Excel workbook for this invoice
+                wb = openpyxl.Workbook()
+                ws = wb.active
+                if ws is None:
+                    ws = wb.create_sheet("Invoice Details")
+                else:
+                    ws.title = "Invoice Details"
+                
+                # Styles
+                header_font = Font(bold=True, color="FFFFFF")
+                header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+                center_align = Alignment(horizontal="center", vertical="center")
+                
+                # Invoice header
+                ws.merge_cells('A1:B1')
+                ws['A1'] = "INVOICE DETAILS"
+                ws['A1'].font = Font(bold=True, size=14)
+                ws['A1'].alignment = center_align
+                
+                # Invoice data
+                invoice_data = [
+                    ["Bill Date", invoice.BillDate],
+                    ["Bill Number", invoice.BillNumber],
+                    ["Purchase Order", invoice.PurchaseOrder],
+                    ["Bill Status", invoice.BillStatus],
+                    ["Source of Supply", invoice.SourceOfSupply],
+                    ["Destination of Supply", invoice.DestinationOfSupply],
+                    ["GST Treatment", invoice.GSTTreatment],
+                    ["GSTIN", invoice.GSTIN],
+                    ["Is Inclusive Tax", "Yes" if invoice.IsInclusiveTax else "No"],
+                    ["TDS Percentage", invoice.TDSPercentage],
+                    ["TDS Amount", invoice.TDSAmount],
+                    ["TDS Section Code", invoice.TDSSectionCode],
+                    ["TDS Name", invoice.TDSName],
+                    ["Vendor Name", invoice.VendorName],
+                    ["Due Date", invoice.DueDate],
+                    ["Currency Code", invoice.CurrencyCode],
+                    ["Exchange Rate", invoice.ExchangeRate],
+                    ["Sub Total", invoice.SubTotal],
+                    ["Total", invoice.Total],
+                    ["Balance", invoice.Balance],
+                    ["Vendor Notes", invoice.VendorNotes],
+                    ["Terms & Conditions", invoice.TermsConditions],
+                    ["Payment Terms", invoice.PaymentTerms],
+                    ["Payment Terms Label", invoice.PaymentTermsLabel],
+                    ["Is Billable", "Yes" if invoice.IsBillable else "No"],
+                    ["Customer Name", invoice.CustomerName],
+                    ["Project Name", invoice.ProjectName],
+                    ["Purchase Order Number", invoice.PurchaseOrderNumber],
+                    ["Is Discount Before Tax", "Yes" if invoice.IsDiscountBeforeTax else "No"],
+                    ["Entity Discount Amount", invoice.EntityDiscountAmount],
+                    ["Discount Account", invoice.DiscountAccount],
+                    ["Is Landed Cost", "Yes" if invoice.IsLandedCost else "No"],
+                    ["Warehouse Name", invoice.WarehouseName],
+                    ["Branch Name", invoice.BranchName],
+                    ["CF Transporte Name", invoice.CF_Transporte_Name],
+                    ["TCS Tax Name", invoice.TCSTaxName],
+                    ["TCS Percentage", invoice.TCSPercentage],
+                    ["Nature of Collection", invoice.NatureOfCollection],
+                    ["TCS Amount", invoice.TCSAmount],
+                    ["Supply Type", invoice.SupplyType],
+                    ["ITC Eligibility", invoice.ITCEligibility],
+                    ["Status", invoice.Status],
+                    ["Notes", invoice.Notes]
+                ]
+                
+                # Write invoice data
+                for row_idx, (label, value) in enumerate(invoice_data, start=3):
+                    ws[f'A{row_idx}'] = label
+                    ws[f'A{row_idx}'].font = Font(bold=True)
+                    ws[f'B{row_idx}'] = value
+                
+                # Items header
+                ws['A30'] = "ITEMS"
+                ws['A30'].font = Font(bold=True, size=12)
+                
+                items_headers = ["Item Name", "SKU", "HSN/SAC", "Quantity", "Rate", 
+                               "Tax Percentage", "Tax Amount", "Item Total"]
+                
+                for col_idx, header in enumerate(items_headers, start=1):
+                    cell = ws.cell(row=31, column=col_idx, value=header)
+                    cell.font = header_font
+                    cell.fill = header_fill
+                    cell.alignment = center_align
+                
+                # Write items data
+                for row_idx, item in enumerate(items, start=32):
+                    ws.cell(row=row_idx, column=1, value=item.ItemName)
+                    ws.cell(row=row_idx, column=2, value=item.SKU)
+                    ws.cell(row=row_idx, column=3, value=item.HSN_SAC)
+                    ws.cell(row=row_idx, column=4, value=item.Quantity)
+                    ws.cell(row=row_idx, column=5, value=item.Rate)
+                    ws.cell(row=row_idx, column=6, value=item.TaxPercentage)
+                    ws.cell(row=row_idx, column=7, value=item.TaxAmount)
+                    ws.cell(row=row_idx, column=8, value=item.ItemTotal)
+                
+                # Auto-adjust column widths - FIXED VERSION
+                for col_idx in range(1, ws.max_column + 1):
+                    max_length = 0
+                    column_letter = openpyxl.utils.get_column_letter(col_idx)
+                    
+                    for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=col_idx, max_col=col_idx):
+                        for cell in row:
+                            try:
+                                if cell.value and len(str(cell.value)) > max_length:
+                                    max_length = len(str(cell.value))
+                            except:
+                                pass
+                    
+                    adjusted_width = min(max_length + 2, 50)
+                    ws.column_dimensions[column_letter].width = adjusted_width
+
+                # Save workbook to BytesIO
+                invoice_buffer = io.BytesIO()
+                wb.save(invoice_buffer)
+                invoice_buffer.seek(0)
+                
+                # Add to zip file
+                filename = f"Invoice_{invoice.BillNumber or invoice.InvoiceID}.xlsx"
+                zip_file.writestr(filename, invoice_buffer.getvalue())
+        
+        zip_buffer.seek(0)
+        
+        # Return the zip file data directly (not as a StreamingResponse)
+        zip_data = zip_buffer.getvalue()
+        return {
+            "filename": "advanced_invoices_export.zip",
+            "content": base64.b64encode(zip_data).decode('utf-8'),
+            "content_type": "application/zip"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error exporting advanced invoices: {str(e)}")
+
+@router.get("/advanced-invoices/{invoice_id}/download")
+def download_advanced_invoice(invoice_id: int, db: Session = Depends(get_db)):
+    try:
+        # Get invoice
+        invoice = db.query(AdvancedColumnsInvoicedata).filter(
+            AdvancedColumnsInvoicedata.InvoiceID == invoice_id
+        ).first()
+        
+        if not invoice:
+            raise HTTPException(status_code=404, detail="Invoice not found")
+        
+        # Get items for this invoice
+        items = db.query(AdvancedColumnsItems).filter(
+            AdvancedColumnsItems.InvoiceID == invoice_id
+        ).all()
+        
+        # Create Excel workbook
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        if ws is None:
+            ws = wb.create_sheet("Invoice Details")
+        else:
+            ws.title = "Invoice Details"
+        
+        # Styles
+        header_font = Font(bold=True, color="FFFFFF")
+        header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+        center_align = Alignment(horizontal="center", vertical="center")
+        
+        # Invoice header
+        ws.merge_cells('A1:B1')
+        ws['A1'] = "INVOICE DETAILS"
+        ws['A1'].font = Font(bold=True, size=14)
+        ws['A1'].alignment = center_align
+        
+        # Invoice data
+        invoice_data = [
+            ["Bill Date", invoice.BillDate],
+            ["Bill Number", invoice.BillNumber],
+            ["Purchase Order", invoice.PurchaseOrder],
+            ["Bill Status", invoice.BillStatus],
+            ["Source of Supply", invoice.SourceOfSupply],
+            ["Destination of Supply", invoice.DestinationOfSupply],
+            ["GST Treatment", invoice.GSTTreatment],
+            ["GSTIN", invoice.GSTIN],
+            ["Is Inclusive Tax", "Yes" if invoice.IsInclusiveTax else "No"],
+            ["TDS Percentage", invoice.TDSPercentage],
+            ["TDS Amount", invoice.TDSAmount],
+            ["TDS Section Code", invoice.TDSSectionCode],
+            ["TDS Name", invoice.TDSName],
+            ["Vendor Name", invoice.VendorName],
+            ["Due Date", invoice.DueDate],
+            ["Currency Code", invoice.CurrencyCode],
+            ["Exchange Rate", invoice.ExchangeRate],
+            ["Sub Total", invoice.SubTotal],
+            ["Total", invoice.Total],
+            ["Balance", invoice.Balance],
+            ["Vendor Notes", invoice.VendorNotes],
+            ["Terms & Conditions", invoice.TermsConditions],
+            ["Payment Terms", invoice.PaymentTerms],
+            ["Payment Terms Label", invoice.PaymentTermsLabel],
+            ["Is Billable", "Yes" if invoice.IsBillable else "No"],
+            ["Customer Name", invoice.CustomerName],
+            ["Project Name", invoice.ProjectName],
+            ["Purchase Order Number", invoice.PurchaseOrderNumber],
+            ["Is Discount Before Tax", "Yes" if invoice.IsDiscountBeforeTax else "No"],
+            ["Entity Discount Amount", invoice.EntityDiscountAmount],
+            ["Discount Account", invoice.DiscountAccount],
+            ["Is Landed Cost", "Yes" if invoice.IsLandedCost else "No"],
+            ["Warehouse Name", invoice.WarehouseName],
+            ["Branch Name", invoice.BranchName],
+            ["CF Transporte Name", invoice.CF_Transporte_Name],
+            ["TCS Tax Name", invoice.TCSTaxName],
+            ["TCS Percentage", invoice.TCSPercentage],
+            ["Nature of Collection", invoice.NatureOfCollection],
+            ["TCS Amount", invoice.TCSAmount],
+            ["Supply Type", invoice.SupplyType],
+            ["ITC Eligibility", invoice.ITCEligibility],
+            ["Status", invoice.Status],
+            ["Notes", invoice.Notes]
+        ]
+        
+        # Write invoice data
+        for row_idx, (label, value) in enumerate(invoice_data, start=3):
+            ws[f'A{row_idx}'] = label
+            ws[f'A{row_idx}'].font = Font(bold=True)
+            ws[f'B{row_idx}'] = value
+        
+        # Items header
+        ws['A30'] = "ITEMS"
+        ws['A30'].font = Font(bold=True, size=12)
+        
+        items_headers = ["Item Name", "SKU", "HSN/SAC", "Quantity", "Rate", 
+                       "Tax Percentage", "Tax Amount", "Item Total"]
+        
+        for col_idx, header in enumerate(items_headers, start=1):
+            cell = ws.cell(row=31, column=col_idx, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = center_align
+        
+        # Write items data
+        for row_idx, item in enumerate(items, start=32):
+            ws.cell(row=row_idx, column=1, value=item.ItemName)
+            ws.cell(row=row_idx, column=2, value=item.SKU)
+            ws.cell(row=row_idx, column=3, value=item.HSN_SAC)
+            ws.cell(row=row_idx, column=4, value=item.Quantity)
+            ws.cell(row=row_idx, column=5, value=item.Rate)
+            ws.cell(row=row_idx, column=6, value=item.TaxPercentage)
+            ws.cell(row=row_idx, column=7, value=item.TaxAmount)
+            ws.cell(row=row_idx, column=8, value=item.ItemTotal)
+        
+        # Auto-adjust column widths - FIXED VERSION
+        for col_idx in range(1, ws.max_column + 1):
+            max_length = 0
+            column_letter = openpyxl.utils.get_column_letter(col_idx)
+            
+            for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=col_idx, max_col=col_idx):
+                for cell in row:
+                    try:
+                        if cell.value and len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+            ws.column_dimensions[column_letter].bestFit = True
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[column_letter].width = adjusted_width
+        
+        # Save workbook to BytesIO
+        excel_buffer = io.BytesIO()
+        wb.save(excel_buffer)
+        excel_buffer.seek(0)
+        
+        filename = f"Invoice_{invoice.BillNumber or invoice.InvoiceID}.xlsx"
+        
+        # Return the file data directly (not as a StreamingResponse)
+        file_data = excel_buffer.getvalue()
+        return {
+            "filename": filename,
+            "content": base64.b64encode(file_data).decode('utf-8'),
+            "content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error downloading invoice: {str(e)}")
+     
+@router.delete("/advanced-invoices/{invoice_id}")
+def delete_advanced_invoice(invoice_id: int, db: Session = Depends(get_db)):
+    try:
+        items_deleted = db.query(AdvancedColumnsItems).filter(AdvancedColumnsItems.InvoiceID == invoice_id).delete()
+        invoice_deleted = db.query(AdvancedColumnsInvoicedata).filter(AdvancedColumnsInvoicedata.InvoiceID == invoice_id).delete()
+        db.commit()
+        if invoice_deleted == 0:
+            raise HTTPException(status_code=404, detail="Invoice not found")
+        return {"status": "success", "message": f"Advanced invoice {invoice_id} deleted"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error deleting invoice: {str(e)}")
 
 
 import base64

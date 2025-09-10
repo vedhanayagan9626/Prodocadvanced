@@ -41,7 +41,6 @@ class UpdateInvoiceRequest(BaseModel):
     taxes: str
     total_quantity: str
 
-# Add these to your existing response_schemas.py
 from datetime import datetime
 
 class CompletedItemResponse(BaseModel):

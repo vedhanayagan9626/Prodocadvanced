@@ -3,23 +3,69 @@ import { showSuccess, showError, showLoading, confirmDelete } from '/static/js/n
 let currentPage = 1;
 const itemsPerPage = 10;
 const token = localStorage.getItem('authToken');
-
+let currentBillType = 'regular'; // 'regular' or 'advanced'
 
 document.addEventListener('DOMContentLoaded', function() {
     // Check if we're already on the completed list page
     if (document.getElementById('completed-list').style.display === 'block') {
-        loadCompletedInvoices();
+        loadBills();
+    }
+    
+    // Add event listener for bill type selection
+    const billTypeSelect = document.getElementById('bill-type-select');
+    if (billTypeSelect) {
+        billTypeSelect.value = 'regular'; // Set default value
+        currentBillType = 'regular';      // Ensure variable matches
+        billTypeSelect.addEventListener('change', function() {
+            currentBillType = this.value;
+            currentPage = 1; // Reset to first page
+            loadBills();
+        });
+        loadBills(); // Trigger initial load for default value
+    }
+
+    
+    // Add event listener for Excel download button
+    const downloadExcelBtn = document.getElementById('download-excel-btn');
+    if (downloadExcelBtn) {
+        downloadExcelBtn.addEventListener('click', downloadAdvancedBillsExcel);
     }
 });
 
-
 // Make sure this function is globally available
-window.loadCompletedInvoices = loadCompletedInvoices;
+window.loadBills = loadBills;
 
+function toggleBillTables() {
+    const regularTable = document.getElementById('regular-bills-table');
+    const advancedTable = document.getElementById('advanced-bills-table');
+    const downloadExcelBtn = document.getElementById('download-excel-btn');
+    
+    if (currentBillType === 'regular') {
+        if (regularTable) regularTable.style.display = 'table';
+        if (advancedTable) advancedTable.style.display = 'none';
+        if (downloadExcelBtn) downloadExcelBtn.style.display = 'none';
+    } else {
+        if (regularTable) regularTable.style.display = 'none';
+        if (advancedTable) advancedTable.style.display = 'table';
+        if (downloadExcelBtn) downloadExcelBtn.style.display = 'inline-flex';
+    }
+}
 
-function loadCompletedInvoices() {
-    const tableBody = document.getElementById('completed-invoices-body');
-    tableBody.innerHTML = '<tr><td colspan="7" class="loading-text">Loading invoices...</td></tr>';
+function loadBills() {
+    toggleBillTables(); // Add this line
+    
+    if (currentBillType === 'regular') {
+        loadRegularBills();
+    } else {
+        loadAdvancedBills();
+    }
+}
+
+function loadRegularBills() {
+    const tableBody = document.getElementById('regular-invoices-body');
+    if (!tableBody) return;
+    
+    tableBody.innerHTML = '<tr><td colspan="8" class="loading-text">Loading regular bills...</td></tr>';
     
     fetch(`/api/v1/invoices/completed?page=${currentPage}&per_page=${itemsPerPage}`)
         .then(response => {
@@ -36,32 +82,68 @@ function loadCompletedInvoices() {
             });
         })
         .then(({ data, total, totalPages }) => { 
-            renderCompletedInvoices(data, total, totalPages);
+            renderRegularBills(data, total, totalPages);
         })
         .catch(error => {
             console.error('Error:', error);
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="7" class="error-text">
-                        Failed to load invoices: ${error.message}
-                        <button onclick="loadCompletedInvoices()">Retry</button>
+                    <td colspan="8" class="error-text">
+                        Failed to load regular bills: ${error.message}
+                        <button onclick="loadRegularBills()">Retry</button>
                     </td>
                 </tr>
             `;
         });
 }
 
-function renderCompletedInvoices(invoices, total = 0, totalPages = 1) {
-    const tableBody = document.getElementById('completed-invoices-body');
+function loadAdvancedBills() {
+    const tableBody = document.getElementById('advanced-invoices-body');
+    if (!tableBody) return;
+    
+    tableBody.innerHTML = '<tr><td colspan="10" class="loading-text">Loading advanced bills...</td></tr>';
+    
+    fetch(`/api/v1/advanced-invoices?page=${currentPage}&per_page=${itemsPerPage}`)
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => {
+                    throw new Error(err.detail || `HTTP error! status: ${response.status}`);
+                });
+            }
+            return response.json().then(data => {
+                // Get pagination info from headers
+                const total = parseInt(response.headers.get('X-Total-Count')) || 0;
+                const totalPages = parseInt(response.headers.get('X-Total-Pages')) || 1;
+                return { data, total, totalPages };
+            });
+        })
+        .then(({ data, total, totalPages }) => { 
+            renderAdvancedBills(data, total, totalPages);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="10" class="error-text">
+                        Failed to load advanced bills: ${error.message}
+                        <button onclick="loadAdvancedBills()">Retry</button>
+                    </td>
+                </tr>
+            `;
+        });
+}
+
+function renderRegularBills(invoices, total = 0, totalPages = 1) {
+    const tableBody = document.getElementById('regular-invoices-body');
+    if (!tableBody) return;
+    
     tableBody.innerHTML = '';
 
     // Update pagination controls
-    document.getElementById('page-info').textContent = `Page ${currentPage} of ${totalPages}`;
-    document.getElementById('prev-page').disabled = currentPage <= 1;
-    document.getElementById('next-page').disabled = currentPage >= totalPages;
+    updatePaginationControls(total, totalPages);
 
     if (invoices.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="7">No invoices found</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="8">No regular bills found</td></tr>';
         return;
     }
 
@@ -90,99 +172,144 @@ function renderCompletedInvoices(invoices, total = 0, totalPages = 1) {
                 <td>₹${invoice.tax_amount.toFixed(2)}</td>
                 <td>₹${invoice.total_amount.toFixed(2)}</td>
                 <td class="action-buttons">
-                    <button class="btn-download" data-invoice="${invoice.invoice_number}">
+                    <button class="btn-download" data-invoice="${invoice.invoice_number}" data-type="regular">
                         <i class="fas fa-download"></i>
                     </button>
-                    <!-- <button class="btn-edit" data-invoice="${invoice.invoice_number}">
-                        <i class="fas fa-edit"></i>
-                    </button> -->
-                    <button class="btn-delete" data-invoice="${invoice.invoice_number}">
+                    <button class="btn-delete" data-invoice="${invoice.invoice_number}" data-type="regular">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
             `;
             tableBody.appendChild(row);
         } catch (error) {
-            console.error('Error rendering invoice row:', error);
-            showError('Error displaying some invoice data');
+            console.error('Error rendering regular bill row:', error);
+            showError('Error displaying some bill data');
         }
     });
 }
 
+function renderAdvancedBills(invoices, total = 0, totalPages = 1) {
+    const tableBody = document.getElementById('advanced-invoices-body');
+    if (!tableBody) return;
+    
+    tableBody.innerHTML = '';
 
-document.getElementById('completed-invoices-body').addEventListener('click', function(e) {
-    // Handle button clicks
-    const btn = e.target.closest('.action-buttons button, .action-buttons i');
-    if (btn) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        const button = btn.tagName === 'I' ? btn.parentElement : btn;
-        const invoiceNumber = button.dataset.invoice;
-        
-        if (button.classList.contains('btn-download')) {
-            downloadInvoice(e, invoiceNumber);
-        // } else if (button.classList.contains('btn-edit')) {
-        //     editInvoice(e, invoiceNumber);
-        } else if (button.classList.contains('btn-delete')) {
-            deleteInvoice(e, invoiceNumber);
-        }
+    // Update pagination controls
+    updatePaginationControls(total, totalPages);
+
+    if (invoices.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="10">No advanced bills found</td></tr>';
         return;
     }
-    
-    // Handle row clicks (only if not clicking on a button)
-    const row = e.target.closest('tr');
-    if (row) {
-        const invoiceNumber = row.querySelector('.btn-download')?.dataset.invoice;
-        if (invoiceNumber) {
-            redirectToInvoiceDetail(invoiceNumber);
+
+    invoices.forEach(invoice => {
+        try {
+            const row = document.createElement('tr');
+            row.style.cursor = 'pointer';
+            
+            row.innerHTML = `
+                <td>${invoice.BillDate || 'N/A'}</td>
+                <td>${invoice.BillNumber || 'N/A'}</td>
+                <td>${invoice.VendorName || 'N/A'}</td>
+                <td>${invoice.CustomerName || 'N/A'}</td>
+                <td>${invoice.Items ? invoice.Items.length : 0}</td>
+                <td>₹${invoice.SubTotal ? parseFloat(invoice.SubTotal).toFixed(2) : '0.00'}</td>
+                <td>₹${invoice.TaxAmount ? parseFloat(invoice.TaxAmount).toFixed(2) : '0.00'}</td>
+                <td>₹${invoice.Total ? parseFloat(invoice.Total).toFixed(2) : '0.00'}</td>
+                <td><span class="status-badge ${invoice.Status || 'DRAFT'}">${invoice.Status || 'DRAFT'}</span></td>
+                <td class="action-buttons">
+
+                    <button class="btn-download" data-id="${invoice.InvoiceID}" data-type="advanced">
+                        <i class="fas fa-download"></i>
+                    </button>
+                    <button class="btn-delete" data-id="${invoice.InvoiceID}" data-type="advanced">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        } catch (error) {
+            console.error('Error rendering advanced bill row:', error);
+            showError('Error displaying some bill data');
         }
+    });
+}
+
+function updatePaginationControls(total = 0, totalPages = 1) {
+    const pageInfo = document.getElementById('page-info');
+    const prevBtn = document.getElementById('prev-page');
+    const nextBtn = document.getElementById('next-page');
+    
+    if (pageInfo) pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+    if (prevBtn) prevBtn.disabled = currentPage <= 1;
+    if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
+}
+
+// Event listeners for pagination
+document.getElementById('prev-page')?.addEventListener('click', () => {
+    if (currentPage > 1) {
+        currentPage--;
+        loadBills();
     }
+});
+
+document.getElementById('next-page')?.addEventListener('click', () => {
+    currentPage++;
+    loadBills();
 });
 
 // Event listener for all action buttons
 document.addEventListener('click', function(e) {
-    const btn = e.target.closest('.action-buttons button');
+    const btn = e.target.closest('.action-buttons button, .action-buttons i');
     if (!btn) return;
     
+    e.preventDefault();
     e.stopPropagation();
-    const invoiceNumber = btn.dataset.invoice;
     
-    if (btn.classList.contains('btn-download')) {
-        downloadInvoice(e, invoiceNumber);
-    // } else if (btn.classList.contains('btn-edit')) {
-    //     editInvoice(e, invoiceNumber);
-    } else if (btn.classList.contains('btn-delete')) {
-        deleteInvoice(e, invoiceNumber);
+    const button = btn.tagName === 'I' ? btn.parentElement : btn;
+    const id = button.dataset.invoice || button.dataset.id;
+    const type = button.dataset.type || 'regular';
+    
+    if (button.classList.contains('btn-view')) {
+        viewBill(id, type);
+    } else if (button.classList.contains('btn-edit')) {
+        editBill(id, type);
+    } else if (button.classList.contains('btn-download')) {
+        downloadBill(e, id, type);
+    } else if (button.classList.contains('btn-delete')) {
+        deleteBill(e, id, type);
     }
 });
 
-// event listeners for pagination
-document.getElementById('prev-page').addEventListener('click', () => {
-    if (currentPage > 1) {
-        currentPage--;
-        loadCompletedInvoices();
+function viewBill(id, type) {
+    if (type === 'advanced') {
+        window.open(`/invoice-editor-advanced?invoice_id=${id}`, '_blank');
+    } else {
+        window.open(`/invoice-details?invoice_no=${id}`, '_blank');
     }
-});
-
-document.getElementById('next-page').addEventListener('click', () => {
-    currentPage++;
-    loadCompletedInvoices();
-});
-
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB'); // DD/MM/YYYY format
 }
 
-function redirectToInvoiceDetail(invoiceNumber) {
-    window.location.href = `/invoice-detail/${invoiceNumber}`;
+function editBill(id, type) {
+    if (type === 'advanced') {
+        window.open(`/invoice-editor-advanced?invoice_id=${id}&mode=edit`, '_blank');
+    } else {
+        // Regular bills might not have edit functionality
+        showError('Edit functionality not available for regular bills');
+    }
 }
 
-async function downloadInvoice(event, invoiceNumber) {
+async function downloadBill(event, id, type) {
     event.preventDefault();
     event.stopPropagation();
 
+    if (type === 'regular') {
+        downloadRegularInvoice(id);
+    } else {
+        downloadAdvancedInvoice(id);
+    }
+}
+
+async function downloadRegularInvoice(invoiceNumber) {
     showLoading('Preparing download...');
 
     try {
@@ -319,6 +446,151 @@ async function downloadInvoice(event, invoiceNumber) {
         const tempPaper = document.getElementById('temp-invoice-paper');
         if (tempPaper) document.body.removeChild(tempPaper);
     }
+}
+
+async function downloadAdvancedInvoice(id) {
+    showLoading('Preparing advanced invoice download...');
+    
+    try {
+        const response = await fetch(`/api/v1/advanced-invoices/${id}/download`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to download advanced invoice');
+        }
+        
+        // Get the Excel file as blob
+        const blob = await response.blob();
+        
+        // Convert blob to base64
+        const reader = new FileReader();
+        const base64Promise = new Promise((resolve, reject) => {
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+        });
+        reader.readAsDataURL(blob);
+        
+        const base64Data = await base64Promise;
+        
+        // Get filename from Content-Disposition header or use default
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let filename = `advanced_invoice_${id}.xlsx`;
+        
+        if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+            if (filenameMatch && filenameMatch[1]) {
+                filename = filenameMatch[1];
+            }
+        }
+        
+        // Call PyWebView native save dialog
+        const saveResponse = await window.pywebview.api.save_file_dialog(base64Data, filename);
+        
+        if (saveResponse.status === "success") {
+            showSuccess(`Advanced invoice saved successfully: ${saveResponse.path}`);
+        } else if (saveResponse.status === "cancelled") {
+            showError("Save cancelled by user");
+        } else {
+            showError(`Error saving file: ${saveResponse.message || 'Unknown error'}`);
+        }
+        
+    } catch (error) {
+        console.error('Error downloading advanced invoice:', error);
+        showError(error.message || 'Failed to download advanced invoice');
+    }
+}
+
+async function downloadAdvancedBillsExcel() {
+    showLoading('Preparing Excel export...');
+    
+    try {
+        const response = await fetch('/api/v1/advanced-invoices/export/excel', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to export advanced bills to Excel');
+        }
+        
+        // Get the zip file as blob
+        const blob = await response.blob();
+        
+        // Convert blob to base64
+        const reader = new FileReader();
+        const base64Promise = new Promise((resolve, reject) => {
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+        });
+        reader.readAsDataURL(blob);
+        
+        const base64Data = await base64Promise;
+        
+        // Get filename from Content-Disposition header or use default
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let filename = 'advanced_invoices_export.zip';
+        
+        if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+            if (filenameMatch && filenameMatch[1]) {
+                filename = filenameMatch[1];
+            }
+        }
+        
+        // Call PyWebView native save dialog
+        const saveResponse = await window.pywebview.api.save_file_dialog(base64Data, filename);
+        
+        if (saveResponse.status === "success") {
+            showSuccess(`Advanced bills exported successfully: ${saveResponse.path}`);
+        } else if (saveResponse.status === "cancelled") {
+            showError("Export cancelled by user");
+        } else {
+            showError(`Error exporting: ${saveResponse.message || 'Unknown error'}`);
+        }
+    } catch (error) {
+        console.error('Error exporting to Excel:', error);
+        showError(error.message || 'Failed to export');
+    }
+}
+
+async function deleteBill(event, id, type) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    confirmDelete(async () => {
+        showLoading('Deleting bill...');
+        
+        try {
+            let response;
+            if (type === 'regular') {
+                const encodedInvoiceNumber = encodeURIComponent(id);
+                response = await fetch(`/api/v1/invoices/corrections/delete?invoice_number=${encodedInvoiceNumber}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                });
+            } else {
+                response = await fetch(`/api/v1/advanced-invoices/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                });
+            }
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to delete bill');
+            }
+            
+            const result = await response.json();
+            showSuccess(result.message);
+            
+            // Refresh the bill list
+            loadBills();
+            
+        } catch (error) {
+            showError(error.message);
+            console.error('Delete error:', error);
+        }
+    });
 }
 
 // Helper function to render the invoice preview (similar to the one in invoice_process.js)
@@ -670,64 +942,33 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-
-async function deleteInvoice(event, invoiceNumber) {
-    event.preventDefault();
-    event.stopPropagation();
+// Set loading state
+function setLoadingState(isLoading) {
+    const tableBody = currentBillType === 'regular' 
+        ? document.getElementById('regular-invoices-body')
+        : document.getElementById('advanced-invoices-body');
     
-    confirmDelete(async () => {
-        showLoading('Deleting invoice...');
-        
-        try {
-            console.log('Original invoiceNumber:', invoiceNumber);
-            const encodedInvoiceNumber = encodeURIComponent(invoiceNumber);
-            console.log('Encoded invoiceNumber:', encodedInvoiceNumber);
-            const response = await fetch(`/api/v1/invoices/corrections/delete?invoice_number=${encodedInvoiceNumber}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` },
-            });
-            
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || 'Failed to delete invoice');
-            }
-            
-            const result = await response.json();
-            showSuccess(result.message);
-            
-            // Refresh the invoice list
-            loadCompletedInvoices();
-            
-        } catch (error) {
-            showError(error.message);
-            console.error('Delete error:', error);
-        }
-    });
+    if (isLoading && tableBody) {
+        tableBody.innerHTML = '<tr><td colspan="10" class="loading-text">Loading bills...</td></tr>';
+    }
+    
+    const prevBtn = document.getElementById('prev-page');
+    const nextBtn = document.getElementById('next-page');
+    
+    if (prevBtn) prevBtn.disabled = isLoading;
+    if (nextBtn) nextBtn.disabled = isLoading;
 }
 
-document.addEventListener('click', function(e) {
-    const btn = e.target.closest('.action-buttons button');
-    if (!btn) return;
+// Make sure to update the DOMContentLoaded event listener to handle both bill types
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if we're returning from edit
+    const lastPage = sessionStorage.getItem('lastInvoicePage');
+    if (lastPage) {
+        currentPage = parseInt(lastPage);
+        sessionStorage.removeItem('lastInvoicePage');
+    }
     
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const invoiceNumber = btn.dataset.invoice;
-    
-    if (btn.classList.contains('btn-download')) {
-        downloadInvoice(e, invoiceNumber);
-    } else if (btn.classList.contains('btn-delete')) {
-        deleteInvoice(e, invoiceNumber);
+    if (document.getElementById('completed-list').style.display === 'block') {
+        loadBills();
     }
 });
-
-function setLoadingState(isLoading) {
-    const tableBody = document.getElementById('completed-invoices-body');
-    if (isLoading) {
-        tableBody.innerHTML = '<tr><td colspan="7" class="loading-text">Loading invoices...</td></tr>';
-    }
-    document.querySelectorAll('.pagination-controls button').forEach(btn => {
-        btn.disabled = isLoading;
-    });
-}
-

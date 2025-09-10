@@ -126,6 +126,14 @@ function redirectToOCR(filename, mode = 'text') {
     window.location.href = `index?file=${encodeURIComponent(filename)}&original=${encodeURIComponent(originalFilename)}&mode=${encodeURIComponent(mode)}`;
 }
 
+// Redirect to Advanced Columns page
+function redirectToAdvancedColumns(filename, mode = 'text') {
+    // Get the original filename from the document data
+    const originalFilename = allDocuments.find(doc => doc.name === filename)?.originalName || filename;
+    // Redirect with both stored filename and original filename
+    window.location.href = `/AdvancedBillsExtraction?file=${encodeURIComponent(filename)}&original=${encodeURIComponent(originalFilename)}&mode=${encodeURIComponent(mode)}`;
+
+}
 // Function to get file icon based on extension
 function getFileIcon(filename) {
     const ext = filename.split('.').pop().toLowerCase();
@@ -327,6 +335,8 @@ function renderDocuments(documents) {
                 <select class="mode-select" style="width: 120px; display: inline-block;">
                     <option value="text">Text PDF</option>
                     <option value="ocr">Scanned</option>
+                    <option value="text&advanced">TextPDF&AdvancedColumns</option>
+                    <option value="ocr&advanced">Scanned&AdvancedColumns</option>
                 </select>
                 <button class="process-btn" data-filename="${doc.name}">
                     <i class="fas fa-arrow-right"></i> Process
@@ -341,11 +351,15 @@ function renderDocuments(documents) {
     updateDeleteButton();
 }
 
-// In your docupload.js
 $(document).on('click', '.process-btn', function() {
     const filename = $(this).data('filename');
     const mode = $(this).closest('td').find('.mode-select').val();
-    redirectToOCR(filename, mode);
+    if (mode === 'text&advanced' || mode === 'ocr&advanced'){
+        redirectToAdvancedColumns(filename, mode.includes('text&advanced') ? 'text' : 'ocr');
+    }
+    else{
+        redirectToOCR(filename, mode);
+    }
 });
 
 function toggleAllFiles(selectAllCheckbox) {

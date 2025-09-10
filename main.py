@@ -135,7 +135,18 @@ async def index(request: Request, file: str, token: Optional[str] = None):
     except HTTPException:
         return templates.TemplateResponse("login_redirect.html", {"request": request})
 
-
+@app.get("/AdvancedBillsExtraction", response_class =HTMLResponse)
+async def AdvancedBillsExtraction(request: Request, file: str, token: Optional[str] = None):
+    try:
+        if token:
+            await get_current_user(token)
+        return templates.TemplateResponse("AdvancedBillsExtraction.html", {
+            "request": request,
+            "filename": file
+        })
+    except HTTPException:
+        return templates.TemplateResponse("AdvancedBillsExtraction.html", {"request": request})
+    
 @app.get("/invoicelist", response_class=HTMLResponse)
 async def invoicelist(request: Request, token: Optional[str] = None):
     try:
@@ -146,6 +157,37 @@ async def invoicelist(request: Request, token: Optional[str] = None):
         return templates.TemplateResponse("login_redirect.html", {"request": request})
 
 
+# import base64
+# import webview
+
+# class PyWebViewSaveAPI:
+#     def save_file_dialog(self, base64_data: str, suggested_name: str):
+#         """
+#         Opens a save dialog and saves the provided base64 file content.
+#         Intended for PyWebView desktop context.
+#         """
+#         try:
+#             # Let the user choose a location
+#             file_path = webview.windows[0].create_file_dialog(
+#                 webview.FileDialog.SAVE,
+#                 save_filename=suggested_name
+#             )
+
+#             if not file_path:
+#                 return {"status": "cancelled"}
+
+#             # Decode base64 and save
+#             file_bytes = base64.b64decode(base64_data.split(",")[1])
+#             with open(file_path[0], "wb") as f:
+#                 f.write(file_bytes)
+
+#             return {
+#                 "status": "success",
+#                 "path": file_path[0]
+#             }
+#         except Exception as e:
+#             return {"status": "error", "message": str(e)}
+        
 # ------------------------------
 # File serving endpoint
 # ------------------------------
@@ -173,7 +215,6 @@ async def get_file(filename: str):
         media_type=media_type,
         headers={'Content-Disposition': f'inline; filename="{filename}"'}
     )
-
 
 # ------------------------------
 # Error handlers

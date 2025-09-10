@@ -566,7 +566,7 @@ class ZohoInvoiceParser:
             logger.error(f"Error creating Excel file: {str(e)}")
             raise
 
-    def process_invoice(self, pdf_path, export_excel=True):
+    def process_advancedinvoice_columns(self ,pdf_path):
         """Main function to process invoice and return Zoho-formatted data with Excel export"""
         try:
             logger.info(f"Processing invoice: {pdf_path}")
@@ -590,71 +590,80 @@ class ZohoInvoiceParser:
             logger.info(f"Extracted {len(items)} line items")
             logger.info(f"Found metadata: {list(metadata.keys())}")
             
-            # Map to Zoho format
+            # Map to Zoho format (existing logic)
             zoho_data = self.map_to_zoho_format(metadata, items, tax_info, totals)
             
-            # Export to Excel if requested
-            result = zoho_data.copy()
-            if export_excel:
-                excel_filename = self.export_to_excel(zoho_data)
-                result['excel_file'] = excel_filename
-                result['excel_path'] = os.path.abspath(excel_filename)
+            # Prepare result structure
+            invoice_data = dict()
+            for field in [   # Put all your invoice summary fields here
+                'Bill Date', 'Bill Number', 'Purchase Order', 'Bill Status', 'Source of Supply',
+                'Destination of Supply', 'GST Treatment', 'GST Identification Number (GSTIN)',
+                'Is Inclusive Tax', 'TDS Percentage', 'TDS Amount', 'TDS Section Code', 'TDS Name',
+                'Vendor Name', 'Due Date', 'Currency Code', 'Exchange Rate', 'Attachment ID',
+                'Attachment Preview ID', 'Attachment Name', 'Attachment Type', 'Attachment Size',
+                'SubTotal', 'Total', 'Balance', 'Vendor Notes', 'Terms & Conditions', 'Payment Terms',
+                'Payment Terms Label', 'Is Billable', 'Customer Name', 'Project Name', 'Purchase Order Number',
+                'Is Discount Before Tax', 'Entity Discount Amount', 'Discount Account', 'Is Landed Cost',
+                'Warehouse Name', 'Branch Name', 'CF.Transporte_Name', 'TCS Tax Name', 'TCS Percentage',
+                'Nature Of Collection', 'TCS Amount', 'Supply Type', 'ITC Eligibility'
+            ]:
+                invoice_data[field] = zoho_data['invoice_header'].get(field, "")
+                
+            items_list = []
+            for item in zoho_data['invoice_items']:
+                item_entry = dict()
+                for field in [
+                    'Item Name', 'SKU', 'Item Description', 'Account', 'Usage unit',
+                    'Quantity', 'Rate', 'Adjustment', 'Item Type', 'Tax Name', 'Tax Percentage',
+                    'Tax Amount', 'Tax Type', 'Item Exemption Code', 'Reverse Charge Tax Name',
+                    'Reverse Charge Tax Rate', 'Reverse Charge Tax Type', 'Item Total',
+                    'HSN/SAC', 'Supply Type'
+                ]:
+                    item_entry[field] = item.get(field, "")
+                items_list.append(item_entry)
             
+            result = {
+                "invoice_data": invoice_data,
+                "items": items_list
+            }
             return result
             
         except Exception as e:
             logger.error(f"Error processing invoice: {str(e)}")
             raise
 
-# Usage example
-def main():
-    """Example usage of the parser with Excel export"""
+
+def process_invoice(text,path):
     parser = ZohoInvoiceParser()
-    
-    # Replace with your PDF path
-    pdf_path = r"D:\Working_app_Invoice\TemplateMatching\invoice_extractor\data\invoice5_processed.pdf"
-    
     try:
+        dontneeded_text = text
+        pdf_path = path
         # Process invoice and create Excel export
-        result = parser.process_invoice(pdf_path, export_excel=True)
+        result = parser.process_advancedinvoice_columns(pdf_path)
         
         # Display results
-        print("=== NUCLEUS ANALYTICS INVOICE PROCESSED ===")
-        print(f"Invoice Number: {result['invoice_header']['Bill Number']}")
-        print(f"Invoice Date: {result['invoice_header']['Bill Date']}")
-        print(f"Vendor: {result['invoice_header']['Vendor Name']}")
-        print(f"Customer: {result['invoice_header']['Customer Name']}")
-        print(f"GSTIN: {result['invoice_header']['GST Identification Number (GSTIN)']}")
-        
-        print(f"\n=== SUMMARY ===")
-        print(f"Total Items: {result['summary']['total_items']}")
-        print(f"Total Quantity: {result['summary']['total_quantity']}")
-        print(f"Subtotal: ₹{result['summary']['subtotal']}")
-        print(f"Total: ₹{result['summary']['total']}")
-        
-        if 'excel_file' in result:
-            print(f"\n=== EXCEL EXPORT ===")
-            print(f"Excel file created: {result['excel_file']}")
-            print(f"Full path: {result['excel_path']}")
-            print("\nThe Excel file contains two worksheets:")
-            print("1. 'Zoho_Import_Format' - Ready for Zoho Books import")
-            print("2. 'Invoice_Summary' - Human-readable summary")
-        
-        # Optional: Print sample of the first few columns for verification
-        print(f"\n=== SAMPLE ZOHO FORMAT (First few fields) ===")
-        if result['invoice_items']:
-            sample_item = result['invoice_items'][0]
-            header = result['invoice_header']
-            sample_fields = ['Bill Date', 'Bill Number', 'Vendor Name', 'Item Name', 'Quantity', 'Rate', 'Item Total']
-            
-            for field in sample_fields:
-                if field in header:
-                    print(f"{field}: {header[field]}")
-                elif field in sample_item:
-                    print(f"{field}: {sample_item[field]}")
-        
+        print("=== NUCLEUS ANALYTICS INVOICE PROCESSED ===\n")
+
+        print("Invoice Summary Data:")
+        for key, value in result.get('invoice_data', {}).items():
+            print(f"  {key}: {value}")
+
+        print("\nInvoice Items:")
+        items = result.get('items', [])
+        if not items:
+            print("  No items extracted.")
+        else:
+            for idx, item in enumerate(items, 1):
+                print(f"  Item {idx}:")
+                for key, value in item.items():
+                    print(f"    {key}: {value}")
+                print()  # Blank line between items
+
+        print("\n=== END OF RESULT ===")
+
+        return result  
     except FileNotFoundError:
-        print(f"Error: The file '{pdf_path}' was not found.")
+        print(f"Error: The file '{path}' was not found.")
         print("Please make sure the PDF file is in the same directory as the script.")
         print("You can also provide the full path to the PDF file.")
     except Exception as e:
@@ -662,5 +671,65 @@ def main():
         import traceback
         traceback.print_exc()
 
-if __name__ == "__main__":
-    main()
+# # Usage example
+# def main():
+#     """Example usage of the parser with Excel export"""
+#     parser = ZohoInvoiceParser()
+    
+#     # Replace with your PDF path
+#     pdf_path = r"invoice5_dup1_textpdf.pdf"
+    
+#     try:
+#         # Process invoice and create Excel export
+#         result = parser.process_invoice(pdf_path, export_excel=True)
+        
+#         # Display results
+#         print("=== NUCLEUS ANALYTICS INVOICE PROCESSED ===")
+#         print(f"Invoice Number: {result['invoice_header']['Bill Number']}")
+#         print(f"Invoice Date: {result['invoice_header']['Bill Date']}")
+#         print(f"Vendor: {result['invoice_header']['Vendor Name']}")
+#         print(f"Customer: {result['invoice_header']['Customer Name']}")
+#         print(f"GSTIN: {result['invoice_header']['GST Identification Number (GSTIN)']}")
+        
+#         print(f"\n=== SUMMARY ===")
+#         print(f"Total Items: {result['summary']['total_items']}")
+#         print(f"Total Quantity: {result['summary']['total_quantity']}")
+#         print(f"Subtotal: ₹{result['summary']['subtotal']}")
+#         print(f"Total: ₹{result['summary']['total']}")
+        
+#         if 'excel_file' in result:
+#             print(f"\n=== EXCEL EXPORT ===")
+#             print(f"Excel file created: {result['excel_file']}")
+#             print(f"Full path: {result['excel_path']}")
+#             print("\nThe Excel file contains two worksheets:")
+#             print("1. 'Zoho_Import_Format' - Ready for Zoho Books import")
+#             print("2. 'Invoice_Summary' - Human-readable summary")
+        
+#         # Optional: Print sample of the first few columns for verification
+#         print(f"\n=== SAMPLE ZOHO FORMAT (First few fields) ===")
+#         if result['invoice_items']:
+#             sample_item = result['invoice_items'][0]
+#             header = result['invoice_header']
+#             sample_fields = ['Bill Date', 'Bill Number', 'Vendor Name', 'Item Name', 'Quantity', 'Rate', 'Item Total']
+            
+#             for field in sample_fields:
+#                 if field in header:
+#                     print(f"{field}: {header[field]}")
+#                 elif field in sample_item:
+#                     print(f"{field}: {sample_item[field]}")
+        
+#     except FileNotFoundError:
+#         print(f"Error: The file '{pdf_path}' was not found.")
+#         print("Please make sure the PDF file is in the same directory as the script.")
+#         print("You can also provide the full path to the PDF file.")
+#     except Exception as e:
+#         print(f"An error occurred: {e}")
+#         import traceback
+#         traceback.print_exc()
+
+# # if __name__ == "__main__":
+# #     main()
+
+# if __name__ == "__main__":
+#     pdf_path = r"D:\Working_app_Invoice\TemplateMatching\invoice_extractor\INVOICE-PARSER-APP\invoice5_dup1_textpdf.pdf"
+#     process_invoice(pdf_path, export_excel=True)

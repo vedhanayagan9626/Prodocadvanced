@@ -32,6 +32,7 @@ datas += [
 site_packages = Path(sys.executable).parent.parent / "Lib" / "site-packages"
 pythonnet_runtime = site_packages / "pythonnet" / "runtime"
 
+
 # Include all DLLs from pythonnet/runtime
 for dll in pythonnet_runtime.glob("*.dll"):
     binaries.append((str(dll), "pythonnet/runtime"))
@@ -42,6 +43,8 @@ hiddenimports += [
     "vendor_parsers.plumber_parser.satruntech_pdf",
     "vendor_parsers.plumber_parser.surekha_goldpdf",
     "vendor_parsers.plumber_parser.Nucleus_pdf",
+    "vendor_parsers.plumber_parser.Nucleus_pdf_advancedcolumns",
+    "vendor_parsers.plumber_parser.satruntech_pdf_advancedcolumns",
     "vendor_parsers.ocr_parser.satruntech_ocr",
     "vendor_parsers.ocr_parser.surekha_goldocr",
     "vendor_parsers.ocr_parser.silver_czocr",
@@ -124,7 +127,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=True,
+    console=False,
     icon="app.ico",
     version_file="version_info.txt"
 )

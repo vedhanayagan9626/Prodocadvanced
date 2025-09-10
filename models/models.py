@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import List, Optional
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
-from sqlalchemy import TypeDecorator,DECIMAL, Date, DateTime, ForeignKeyConstraint, Identity, Integer, PrimaryKeyConstraint, String, Unicode, text, ForeignKey, UnicodeText, JSON
+from sqlalchemy import TypeDecorator,DECIMAL, Date, DateTime, ForeignKeyConstraint, Identity, Integer, PrimaryKeyConstraint, String, Unicode, text, ForeignKey, UnicodeText, JSON, Boolean, BigInteger
 import datetime
 import decimal
 import json
@@ -224,3 +224,82 @@ class CorrectedItems(Base):
             "amount": float(self.Amount) if self.Amount is not None else None,
             "hsn": self.HSN
         }
+    
+class AdvancedColumnsInvoicedata(Base):
+    __tablename__ = 'advanced_Columns_Invoicedata'
+    
+    InvoiceID: Mapped[int] = mapped_column(Integer, Identity(start=1, increment=1), primary_key=True)
+    BillDate: Mapped[Optional[datetime.date]] = mapped_column(Date)
+    BillNumber: Mapped[Optional[str]] = mapped_column(Unicode(100))
+    PurchaseOrder: Mapped[Optional[str]] = mapped_column(Unicode(100))
+    BillStatus: Mapped[Optional[str]] = mapped_column(Unicode(50))
+    SourceOfSupply: Mapped[Optional[str]] = mapped_column(Unicode(200))
+    DestinationOfSupply: Mapped[Optional[str]] = mapped_column(Unicode(200))
+    GSTTreatment: Mapped[Optional[str]] = mapped_column(Unicode(100))
+    GSTIN: Mapped[Optional[str]] = mapped_column(Unicode(50))
+    IsInclusiveTax: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+    TDSPercentage: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(5, 2))
+    TDSAmount: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(18, 2))
+    TDSSectionCode: Mapped[Optional[str]] = mapped_column(Unicode(50))
+    TDSName: Mapped[Optional[str]] = mapped_column(Unicode(100))
+    VendorName: Mapped[Optional[str]] = mapped_column(Unicode(200))
+    DueDate: Mapped[Optional[datetime.date]] = mapped_column(Date)
+    CurrencyCode: Mapped[Optional[str]] = mapped_column(Unicode(10))
+    ExchangeRate: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(10, 4))
+    AttachmentID: Mapped[Optional[str]] = mapped_column(Unicode(100))
+    AttachmentPreviewID: Mapped[Optional[str]] = mapped_column(Unicode(100))
+    AttachmentName: Mapped[Optional[str]] = mapped_column(Unicode(200))
+    AttachmentType: Mapped[Optional[str]] = mapped_column(Unicode(50))
+    AttachmentSize: Mapped[Optional[int]] = mapped_column(BigInteger)
+    SubTotal: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(18, 2))
+    Total: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(18, 2))
+    Balance: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(18, 2))
+    VendorNotes: Mapped[Optional[str]] = mapped_column(UnicodeText)
+    TermsConditions: Mapped[Optional[str]] = mapped_column(UnicodeText)
+    PaymentTerms: Mapped[Optional[str]] = mapped_column(Unicode(200))
+    PaymentTermsLabel: Mapped[Optional[str]] = mapped_column(Unicode(100))
+    IsBillable: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+    CustomerName: Mapped[Optional[str]] = mapped_column(Unicode(200))
+    ProjectName: Mapped[Optional[str]] = mapped_column(Unicode(200))
+    PurchaseOrderNumber: Mapped[Optional[str]] = mapped_column(Unicode(100))
+    IsDiscountBeforeTax: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+    EntityDiscountAmount: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(18, 2))
+    DiscountAccount: Mapped[Optional[str]] = mapped_column(Unicode(100))
+    IsLandedCost: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+    WarehouseName: Mapped[Optional[str]] = mapped_column(Unicode(200))
+    BranchName: Mapped[Optional[str]] = mapped_column(Unicode(200))
+    CF_Transporte_Name: Mapped[Optional[str]] = mapped_column(Unicode(200))
+    TCSTaxName: Mapped[Optional[str]] = mapped_column(Unicode(100))
+    TCSPercentage: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(5, 2))
+    NatureOfCollection: Mapped[Optional[str]] = mapped_column(Unicode(200))
+    TCSAmount: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(18, 2))
+    SupplyType: Mapped[Optional[str]] = mapped_column(Unicode(100))
+    ITCEligibility: Mapped[Optional[str]] = mapped_column(Unicode(100))
+    CreatedDate: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime, server_default=func.now())
+    ModifiedDate: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    OriginalInvoiceNo: Mapped[Optional[str]] = mapped_column(Unicode(50), ForeignKey('Invoices.InvoiceNo'))
+    CorrectionID: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('CorrectedInvoices.CorrectionID'))
+    Status: Mapped[Optional[str]] = mapped_column(Unicode(20), default='DRAFT')
+    Notes: Mapped[Optional[str]] = mapped_column(UnicodeText)
+    TemplateStyle: Mapped[Optional[dict]] = mapped_column(JSONEncodedDict)
+    
+    Items: Mapped[List['AdvancedColumnsItems']] = relationship('AdvancedColumnsItems', back_populates='Invoice', cascade="all, delete-orphan")
+
+class AdvancedColumnsItems(Base):
+    __tablename__ = 'advanced_Columns_Items'
+    
+    ItemID: Mapped[int] = mapped_column(Integer, Identity(start=1, increment=1), primary_key=True)
+    InvoiceID: Mapped[int] = mapped_column(Integer, ForeignKey('advanced_Columns_Invoicedata.InvoiceID', ondelete='CASCADE'))
+    ItemName: Mapped[Optional[str]] = mapped_column(Unicode(200))
+    SKU: Mapped[Optional[str]] = mapped_column(Unicode(100))
+    HSN_SAC: Mapped[Optional[str]] = mapped_column(Unicode(50))
+    Quantity: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(18, 3))
+    Rate: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(18, 2))
+    TaxPercentage: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(5, 2))
+    TaxAmount: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(18, 2))
+    ItemTotal: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(18, 2))
+    CreatedDate: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime, server_default=func.now())
+    ModifiedDate: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    OriginalItemID: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('Items.ItemID'))
+    
+    Invoice: Mapped['AdvancedColumnsInvoicedata'] = relationship('AdvancedColumnsInvoicedata', back_populates='Items')
